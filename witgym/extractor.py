@@ -18,10 +18,12 @@ Return ONLY a JSON object with these exact fields (no explanation, no markdown, 
   "tension_type": one of ["social_embarrass", "existential", "status_threat", "identity_expose", "logic_collapse"],
   "power_dynamic": "who has power and who doesn't, one sentence",
   "obvious_response": "the most boring, expected response to this input",
-  "violation_distance": one of ["mild", "moderate", "sharp"]
+  "violation_distance": one of ["mild", "moderate", "sharp"],
+  "twist_potential": an integer from 1 to 10 rating how much hidden comedy tension is in this input (1=completely flat, 10=extremely rich setup for wit)
 }}
 
 Think carefully about the ARCHETYPE — pick the one that most accurately describes the comedy mechanism hiding in this input.
+For twist_potential: score high if the input has self-delusion, status gap, or absurd logic. Score low if it is a neutral factual statement with no tension.
 Return ONLY the JSON. Nothing else."""
 
 
@@ -47,7 +49,7 @@ def extract_comedy_metadata(user_input: str, model, tokenizer) -> ComedyMetadata
         try:
             data = json.loads(match.group())
             metadata = ComedyMetadata.model_validate(data)
-            logger.info(f"Extracted: archetype={metadata.archetype.value}, tension={metadata.tension_type.value}")
+            logger.info(f"Extracted: archetype={metadata.archetype.value}, tension={metadata.tension_type.value}, twist_potential={metadata.twist_potential}")
             return metadata
         except Exception as e:
             logger.warning(f"Parse error (attempt {attempt + 1}): {e}")

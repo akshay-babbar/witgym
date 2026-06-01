@@ -60,16 +60,33 @@ def retrieve_scenes(
     # Rank all scenes by similarity
     ranked_indices = np.argsort(scores)[::-1]
 
-    # Filter: exclude scenes whose archetype is already used in this session
+    # Filter: exclude scenes whose archetype is already used in this session,
+    # AND enforce intra-call diversity (no two retrieved scenes share the same archetype)
     selected = []
+    selected_archetypes: Set[ComedyArchetype] = set()
     for idx in ranked_indices:
         scene = scenes[idx]
-        if scene.archetype not in used_archetypes:
-            selected.append(scene)
+        if scene.archetype in used_archetypes:
+            continue
+        if scene.archetype in selected_archetypes:
+            continue  # Already have a scene of this archetype in this call
+        selected.append(scene)
+        selected_archetypes.add(scene.archetype)
         if len(selected) >= top_k:
             break
 
-    # If all archetypes exhausted (after 6 turns), just return top matches without filter
+    # Fallback 1: relax intra-call diversity if not enough distinct archetypes found
+    if len(selected) < top_k:
+        for idx in ranked_indices:
+            scene = scenes[idx]
+            if scene.archetype in used_archetypes:
+                continue
+            if scene not in selected:
+                selected.append(scene)
+            if len(selected) >= top_k:
+                break
+
+    # Fallback 2: all session archetypes exhausted — return top matches without filter
     if not selected:
         logger.warning("All archetypes used — returning top scenes without archetype filter")
         selected = [scenes[i] for i in ranked_indices[:top_k]]
