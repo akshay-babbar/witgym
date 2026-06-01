@@ -2,7 +2,9 @@
 
 Implements Principles 4, 5, and 6 from the spec.
 """
-from typing import List
+from typing import List, Set
+from collections import Counter
+import re as _re
 from loguru import logger
 from transformers import LogitsProcessorList
 from witgym.model import generate_text, ClichePenaltyProcessor
@@ -12,19 +14,28 @@ from witgym.schemas import (
 
 PERSONA_INSTRUCTIONS = {
     "cynic": (
-        "Expose the social hypocrisy or delusion in what was said. "
-        "Find the gap between their self-image and reality. "
-        "Be sharp but not cruel."
+        "You've seen this exact rationalization a hundred times. "
+        "You're not angry about it — you're just tired. "
+        "State what's actually happening with the weariness of someone who has been right about this for years. "
+        "Open with the situation, the consequence, or the outcome as your subject — "
+        "lead with something concrete and specific, not a generic observation about the person."
     ),
-    "observer": (
-        "Say the thing everyone sees but nobody says. "
-        "Point at the recognizable truth they didn't intend to reveal. "
-        "Be precise, not mean."
+    "frame_switcher": (
+        "This situation is actually being processed by a completely unrelated formal institution. "
+        "Choose whichever institution maps most absurdly and precisely onto the specific tension in this input — "
+        "a regulatory body, a scientific agency, a legal tribunal, a certification board, an athletic committee, "
+        "or any other formal system whose rules would make this situation absurd. "
+        "Do not list the institution's name as a setup — just speak in its voice directly. "
+        "Check the CONVERSATION CONTEXT: if a prior WitGym response already used a particular institution type, "
+        "pick a different one. "
+        "Report with total conviction, as if this framing is obviously correct."
     ),
     "absurdist": (
-        "Follow the logic of their situation to its most surreal honest conclusion. "
-        "Stay grounded in their reality, then take one step too far. "
-        "No random weirdness — logical weirdness only."
+        "You're the only person in the room who sees where this logically ends. "
+        "You're not being weird — you're just following the math. "
+        "State the inevitable conclusion with the calm of someone reading from a manual. "
+        "End with a single, specific concrete image that makes the conclusion visible — "
+        "not an abstraction, not a restatement. A physical object, a measurable action, a named institution."
     ),
 }
 
@@ -83,16 +94,26 @@ def generate_candidates(
     tokenizer,
     context_str: str,
     used_archetypes: set,
+    personas_to_run: List[str] = None,
 ) -> List[CandidateResponse]:
-    """Generate 3 candidates — one per persona — with ClichePenalty applied."""
+    """Generate persona candidates (1-3) with ClichePenalty applied.
+
+    personas_to_run: optional subset of PERSONA_INSTRUCTIONS keys.
+    None = all three (default). Engine gates this based on twist_potential.
+    """
     scenes_block = _build_scenes_block(scenes)
     used_str = ", ".join(a.value for a in used_archetypes) if used_archetypes else "none yet"
+
+    active_personas = {
+        name: instr for name, instr in PERSONA_INSTRUCTIONS.items()
+        if personas_to_run is None or name in personas_to_run
+    }
 
     cliche_processor = ClichePenaltyProcessor(metadata.obvious_response, tokenizer)
     processors = LogitsProcessorList([cliche_processor])
 
     candidates = []
-    for persona_name, persona_instruction in PERSONA_INSTRUCTIONS.items():
+    for persona_name, persona_instruction in active_personas.items():
         prompt = GENERATION_PROMPT.format(
             user_input=user_input,
             surface=metadata.surface,
@@ -117,27 +138,43 @@ def generate_candidates(
             violation_type=f"{metadata.archetype.value} via {persona_name} lens",
         ))
 
+        # Lexical carry-forward: ban top content words from previous candidate
+        # in all subsequent candidates to force vocabulary divergence
+        _STOP_WORDS = {
+            "the", "a", "an", "is", "was", "i", "you", "it", "in", "of",
+            "to", "and", "that", "this", "they", "their", "are", "be",
+            "have", "has", "but", "not", "or", "at", "by", "we", "he", "she",
+        }
+        words = [
+            w.lower() for w in _re.findall(r"\b\w+\b", raw)
+            if w.lower() not in _STOP_WORDS and len(w) > 3
+        ]
+        if words:
+            top_words = [w for w, _ in Counter(words).most_common(8)]
+            # Add these word token IDs to the penalty set for next candidates
+            for word in top_words:
+                extra_ids = tokenizer.encode(word, add_special_tokens=False)
+                cliche_processor.penalty_ids.update(extra_ids[:2])  # first 2 tokens of each word
+
     return candidates
 
 
 RANK_PROMPT = """\
-You are judging three comedy responses to: "{user_input}"
+You are judging {n} comedy responses to: "{user_input}"
 
-Candidate 1 ({p1}, {w1} words): {c1}
-Candidate 2 ({p2}, {w2} words): {c2}
-Candidate 3 ({p3}, {w3} words): {c3}
+{candidates_block}
 
-Pick the funniest one. Judge in this exact order of priority:
+Pick the funniest one using this exact priority order:
 
-1. BREVITY — Shorter is almost always funnier. Compression is comedy. The correct answer is almost never the longest one.
-2. SHARPNESS — Does the punchline land immediately, without unpacking? Can you feel it the first time you read it?
-3. TRUTH — Does it say something recognizable that nobody said out loud?
-4. BENIGN — Slightly uncomfortable but not offensive.
+1. CONCRETE IMAGE — The best response ends with a single specific, unexpected image or action that makes the human truth visible. Responses using only abstract concepts or bureaucratic jargon with no specific image always lose. "The drill is merely a gentle hug" beats "the patient submitted a fitness statement."
+2. SHARPNESS — Does the punchline land on first read without unpacking?
+3. TRUTH — Does it name something recognizable that nobody said out loud?
+4. BREVITY — If sharpness and image quality are equal, pick the shorter one.
 
-The correct answer is almost always NOT the longest or most complex one.
-If two candidates are close on sharpness, always pick the shorter one.
+A sharp 20-word line with a specific concrete image beats a flat 10-word line of jargon.
+Responses that are purely bureaucratic or purely abstract always lose, regardless of length.
 
-Reply ONLY with a single digit: 1, 2, or 3. Nothing else."""
+Reply ONLY with a single digit ({valid_digits}). Nothing else."""
 
 
 def rank_candidates(
@@ -154,6 +191,29 @@ def rank_candidates(
     if len(candidates) == 1:
         return candidates[0].text
 
+    # Pre-rank refusal filter: remove any candidate that leaked prompt internals or refused
+    # This must happen BEFORE the LLM ranker sees candidates
+    _REFUSAL_SIGNALS = (
+        "i cannot", "i'm unable", "the prompt requires", "i am unable",
+        "i need to clarify", "as an ai", "i can't complete",
+    )
+    clean_candidates = [
+        c for c in candidates
+        if not any(sig in c.text.lower() for sig in _REFUSAL_SIGNALS)
+    ]
+    if len(clean_candidates) == 0:
+        logger.warning("All candidates were refusals — returning shortest original")
+        w_orig = [len(c.text.split()) for c in candidates]
+        return candidates[min(range(len(candidates)), key=lambda i: w_orig[i])].text
+    if len(clean_candidates) < len(candidates):
+        logger.warning(f"Filtered {len(candidates) - len(clean_candidates)} refusal candidate(s) before ranking")
+    candidates = clean_candidates
+
+    if len(candidates) == 1:
+        return candidates[0].text
+
+    # Fall through to LLM ranker for both 2 and 3 candidate paths
+
     # Shuffle into a random order for this call — eliminates positional bias
     import random
     shuffled = list(enumerate(candidates))   # [(orig_idx, candidate), ...]
@@ -162,11 +222,17 @@ def rank_candidates(
     # Word counts — makes brevity signal machine-readable, not just verbal
     w_shuffled = [len(c.text.split()) for _, c in shuffled]
 
+    # Build dynamic candidates block (works for 2 or 3 candidates)
+    digits = [str(i + 1) for i in range(len(shuffled))]
+    lines = [
+        f"Candidate {i + 1} ({shuffled[i][1].persona}, {w_shuffled[i]} words): {shuffled[i][1].text}"
+        for i in range(len(shuffled))
+    ]
     prompt = RANK_PROMPT.format(
+        n=len(shuffled),
         user_input=user_input,
-        p1=shuffled[0][1].persona, w1=w_shuffled[0], c1=shuffled[0][1].text,
-        p2=shuffled[1][1].persona, w2=w_shuffled[1], c2=shuffled[1][1].text,
-        p3=shuffled[2][1].persona, w3=w_shuffled[2], c3=shuffled[2][1].text,
+        candidates_block="\n".join(lines),
+        valid_digits="/".join(digits),
     )
 
     raw = generate_text(prompt, model, tokenizer, config_type="rank")
@@ -175,7 +241,7 @@ def rank_candidates(
 
     # Map chosen digit back through the shuffle to original candidate
     for ch in raw:
-        if ch in "123":
+        if ch in digits:
             shuffled_choice = int(ch) - 1
             if 0 <= shuffled_choice < len(shuffled):
                 orig_idx, winner = shuffled[shuffled_choice]
@@ -187,4 +253,45 @@ def rank_candidates(
     shortest_idx = min(range(len(candidates)), key=lambda i: w_orig[i])
     logger.warning(f"Ranking failed — shortest fallback: {candidates[shortest_idx].persona} ({w_orig[shortest_idx]} words)")
     return candidates[shortest_idx].text
+
+
+_COMPRESS_PROMPT = """\
+The following comedy line is good but possibly too long. Compress it to ≤12 words while keeping the punchline completely intact.
+
+Original: "{winner}"
+
+Rules:
+- The FINAL CLAUSE of the sentence is almost always the punchline. NEVER cut it. Cut from the setup or the middle only.
+- If the final clause must be removed to hit ≤12 words, return the original UNCHANGED.
+- Do NOT change the joke structure — only remove filler words from the setup.
+- Return ONLY the compressed version or the original. No explanation. No quotes."""
+
+
+def compress_winner(winner: str, model, tokenizer) -> str:
+    """Swartzwelder compression pass: generate loose, cut ruthless.
+
+    Skipped if winner is already ≤12 words (already tight).
+    Guards: rejects output that is < 4 words or longer than the original.
+    """
+    if len(winner.split()) <= 12:
+        return winner  # Already tight — skip the LLM call
+
+    prompt = _COMPRESS_PROMPT.format(winner=winner)
+    compressed = generate_text(prompt, model, tokenizer, config_type="extract")
+    compressed = compressed.strip().strip('"').strip("'")
+
+    # Sanity guards: reject if collapsed, expanded, or starts with a fragment marker
+    _FRAGMENT_STARTS = (
+        "but ", "and ", "or ", "which ", "that ", "because ",
+        "while ", "since ", "although ", "if ", "though ",
+    )
+    if len(compressed.split()) < 4 or len(compressed.split()) >= len(winner.split()):
+        logger.debug(f"Compression rejected (collapsed/expanded). Keeping original.")
+        return winner
+    if compressed.lower().startswith(_FRAGMENT_STARTS):
+        logger.debug(f"Compression rejected (fragment start: '{compressed[:20]}'). Keeping original.")
+        return winner
+
+    logger.info(f"Compressed: {len(winner.split())}w → {len(compressed.split())}w | '{compressed}'")
+    return compressed
 

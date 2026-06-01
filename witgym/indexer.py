@@ -24,10 +24,10 @@ def _parse_transcript_file(filepath: Path) -> List[TranscriptScene]:
             if not line or line.startswith("#"):
                 continue
             parts = line.split("|")
-            if len(parts) != 8:
-                logger.warning(f"{filepath.name}:{lineno} — expected 8 fields, got {len(parts)}. Skipping.")
+            if len(parts) not in (8, 9):
+                logger.warning(f"{filepath.name}:{lineno} — expected 8-9 fields, got {len(parts)}. Skipping.")
                 continue
-            show, character, setup, response, arch_raw, tension_raw, dist_raw, why = parts
+            show, character, setup, response, arch_raw, tension_raw, dist_raw, why = parts[:8]
             try:
                 scene = TranscriptScene(
                     show=show.strip(),

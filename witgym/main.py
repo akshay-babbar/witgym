@@ -109,15 +109,15 @@ def chat_cmd():
                 console.print(f"[red]Error: {e}[/red]")
                 continue
 
-        # Main response
+        if args.debug:
+            _show_debug_panel(result)
+
+        # Main response — always last so it's visible at the bottom of the terminal
         console.print(Panel(
             f"[bold white]{result.selected}[/bold white]",
             title=f"[cyan]WitGym[/cyan] [dim]({result.metadata.archetype.value})[/dim]",
             border_style="cyan",
         ))
-
-        if args.debug:
-            _show_debug_panel(result)
 
 
 def index_cmd():

@@ -35,6 +35,7 @@ class ComedyMetadata(BaseModel):
     power_dynamic: str
     obvious_response: str
     violation_distance: ViolationDistance
+    twist_potential: int = 5  # 1-10: comedy richness of the input; drives pipeline gating
 
 
 class TranscriptScene(BaseModel):
@@ -71,4 +72,5 @@ def fallback_metadata(user_input: str) -> ComedyMetadata:
         power_dynamic="speaker vs. social expectation",
         obvious_response="I see. That sounds challenging.",
         violation_distance=ViolationDistance.MODERATE,
+        twist_potential=5,
     )
