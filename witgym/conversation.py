@@ -2,7 +2,7 @@
 from typing import List, Tuple, Set
 from loguru import logger
 from witgym import config
-from witgym.schemas import ComedyArchetype
+from witgym.schemas import ComedyArchetype, ComedyMetadata
 
 COMPRESS_PROMPT = """\
 Summarise the following conversation into a compact factual paragraph (max 100 words).
@@ -20,20 +20,29 @@ class ConversationManager:
         self.history: List[Tuple[str, str]] = []   # (user, assistant)
         self.used_archetypes: Set[ComedyArchetype] = set()
         self._summary: str = ""  # Compressed summary of old turns
+        self._mechanisms: List[Tuple[str, str, str]] = []  # (archetype, tension, distance)
 
-    def add_turn(self, user_input: str, response: str, archetype: ComedyArchetype):
+    def add_turn(self, user_input: str, response: str, metadata: ComedyMetadata):
         self.history.append((user_input, response))
-        self.used_archetypes.add(archetype)
+        self.used_archetypes.add(metadata.archetype)
+        self._mechanisms.append((
+            metadata.archetype.value,
+            metadata.tension_type.value,
+            metadata.violation_distance.value,
+        ))
 
     def get_context_string(self) -> str:
-        """Return the last N turns as formatted string, prefixed with summary if compressed."""
-        recent = self.history[-config.KEEP_LAST_N_TURNS:]
+        """Return the last N turns as mechanism-only context.
+
+        Structural goal: preserve callback potential (what kind of jokes were made),
+        while avoiding lexical bleed from raw user/assistant text across turns.
+        """
+        recent = self._mechanisms[-config.KEEP_LAST_N_TURNS:]
         lines = []
         if self._summary:
             lines.append(f"[Earlier conversation summary]: {self._summary}")
-        for user, assistant in recent:
-            lines.append(f"User: {user}")
-            lines.append(f"WitGym: {assistant}")
+        for i, (arch, tension, dist) in enumerate(recent, 1):
+            lines.append(f"Turn -{len(recent) - i + 1}: archetype={arch}, tension={tension}, distance={dist}")
         return "\n".join(lines)
 
     def needs_compression(self, tokenizer) -> bool:

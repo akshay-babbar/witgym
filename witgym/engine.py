@@ -50,7 +50,7 @@ class WitGymEngine:
         if metadata.twist_potential < 4:
             logger.info(f"twist_potential={metadata.twist_potential} < 4 — returning straight reply")
             selected = "Yeah, that tracks."
-            self.conversation.add_turn(user_input, selected, metadata.archetype)
+            self.conversation.add_turn(user_input, selected, metadata)
             return WitGymResponse(
                 metadata=metadata,
                 retrieved_scenes=[],
@@ -68,12 +68,12 @@ class WitGymEngine:
 
         # PASS 2 — Generate persona candidates.
         # Medium inputs (4-6): run cynic + absurdist only.
-        # Rich inputs (> 6): run all three including frame_switcher.
+        # Rich inputs (> 6): run all three including conviction.
         context_str = self.conversation.get_context_string()
         personas_to_run = None  # None = all three
         if metadata.twist_potential <= 6:
-            personas_to_run = ["cynic", "absurdist"]  # Frame switcher needs rich tension
-            logger.info(f"twist_potential={metadata.twist_potential} ≤ 6 — skipping frame_switcher")
+            personas_to_run = ["cynic", "absurdist"]  # Conviction needs richer tension to land cleanly
+            logger.info(f"twist_potential={metadata.twist_potential} ≤ 6 — skipping conviction")
 
         candidates = generate_candidates(
             user_input, metadata, scenes,
@@ -92,7 +92,7 @@ class WitGymEngine:
         selected = _cap_two_sentences(selected)
 
         # Update state
-        self.conversation.add_turn(user_input, selected, metadata.archetype)
+        self.conversation.add_turn(user_input, selected, metadata)
 
         return WitGymResponse(
             metadata=metadata,

@@ -43,8 +43,14 @@ def retrieve_scenes(
     Over-fetches (top_k * 3) then filters out already-used archetypes to
     prevent repetition across the conversation.
     """
-    # Build query string from comedy metadata — NOT from raw user text
-    query = f"{metadata.archetype.value} {metadata.tension_type.value} {metadata.violation_distance.value}"
+    # Mirror the indexed representation: keep the structural labels, then add
+    # the extracted subtext so the query has semantic detail comparable to setup.
+    query = (
+        f"{metadata.archetype.value} "
+        f"{metadata.tension_type.value} "
+        f"{metadata.violation_distance.value} "
+        f"{metadata.subtext}"
+    )
     logger.debug(f"RAG query: '{query}'")
 
     query_emb = embed_model.encode(

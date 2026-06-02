@@ -20,15 +20,12 @@ PERSONA_INSTRUCTIONS = {
         "Open with the situation, the consequence, or the outcome as your subject — "
         "lead with something concrete and specific, not a generic observation about the person."
     ),
-    "frame_switcher": (
-        "This situation is actually being processed by a completely unrelated formal institution. "
-        "Choose whichever institution maps most absurdly and precisely onto the specific tension in this input — "
-        "a regulatory body, a scientific agency, a legal tribunal, a certification board, an athletic committee, "
-        "or any other formal system whose rules would make this situation absurd. "
-        "Do not list the institution's name as a setup — just speak in its voice directly. "
-        "Check the CONVERSATION CONTEXT: if a prior WitGym response already used a particular institution type, "
-        "pick a different one. "
-        "Report with total conviction, as if this framing is obviously correct."
+    "conviction": (
+        "You have a firm, specific belief about how this situation works. "
+        "State it as established fact with total sincerity. "
+        "Do not hedge. Do not qualify. Do not acknowledge any other interpretation exists. "
+        "The belief should be wrong in a way that exposes something true about the speaker. "
+        "No irony. No wink. Absolute conviction."
     ),
     "absurdist": (
         "You're the only person in the room who sees where this logically ends. "
@@ -256,13 +253,13 @@ def rank_candidates(
 
 
 _COMPRESS_PROMPT = """\
-The following comedy line is good but possibly too long. Compress it to ≤12 words while keeping the punchline completely intact.
+The following comedy line is good but possibly too long. Compress it to ≤18 words while keeping the punchline completely intact.
 
 Original: "{winner}"
 
 Rules:
 - The FINAL CLAUSE of the sentence is almost always the punchline. NEVER cut it. Cut from the setup or the middle only.
-- If the final clause must be removed to hit ≤12 words, return the original UNCHANGED.
+- If the final clause must be removed to hit ≤18 words, return the original UNCHANGED.
 - Do NOT change the joke structure — only remove filler words from the setup.
 - Return ONLY the compressed version or the original. No explanation. No quotes."""
 
@@ -270,10 +267,10 @@ Rules:
 def compress_winner(winner: str, model, tokenizer) -> str:
     """Swartzwelder compression pass: generate loose, cut ruthless.
 
-    Skipped if winner is already ≤12 words (already tight).
+    Skipped if winner is already ≤18 words (already tight).
     Guards: rejects output that is < 4 words or longer than the original.
     """
-    if len(winner.split()) <= 12:
+    if len(winner.split()) <= 18:
         return winner  # Already tight — skip the LLM call
 
     prompt = _COMPRESS_PROMPT.format(winner=winner)
@@ -290,6 +287,19 @@ def compress_winner(winner: str, model, tokenizer) -> str:
         return winner
     if compressed.lower().startswith(_FRAGMENT_STARTS):
         logger.debug(f"Compression rejected (fragment start: '{compressed[:20]}'). Keeping original.")
+        return winner
+
+    # Grammar-ish guard: reject "telegraphic" outputs that drop almost all function words.
+    # This is intentionally crude but catches the common failure mode:
+    # "Stared at smoking toaster until fire needs human response registered like software update."
+    _FUNCTION_WORDS = {
+        "a", "an", "the",
+        "to", "of", "for", "in", "on", "at", "with", "as", "by", "from", "into",
+        "like", "than", "then", "that", "which", "because", "until", "while", "since",
+    }
+    words = [w.lower() for w in _re.findall(r"\b\w+\b", compressed)]
+    if len(words) >= 8 and not any(w in _FUNCTION_WORDS for w in words):
+        logger.debug("Compression rejected (telegraphic/no function words). Keeping original.")
         return winner
 
     logger.info(f"Compressed: {len(winner.split())}w → {len(compressed.split())}w | '{compressed}'")
