@@ -136,8 +136,7 @@ def generate_text(
         )
     elif config_type == "rank":
         gen_kwargs = dict(
-            temperature=config.RANK_TEMP,
-            do_sample=True,
+            do_sample=False,
             max_new_tokens=10,
         )
     else:

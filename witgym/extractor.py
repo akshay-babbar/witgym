@@ -23,6 +23,14 @@ Return ONLY a JSON object with these exact fields (no explanation, no markdown, 
 }}
 
 Think carefully about the ARCHETYPE — pick the one that most accurately describes the comedy mechanism hiding in this input.
+Archetype selection guidance (avoid overusing self_delusion):
+- status_assertion: claiming authority/status/rightness as if saying it makes it true
+- misplaced_conf: confident competence claim immediately unsupported by reality
+- anxiety_escalation: small trigger spun into catastrophe / inevitable doom logic
+- social_fail: awkward performance, norm violation, cringe, saying the wrong thing at the wrong time
+- power_inversion: low-status person is the only honest/correct one, or social power overrides institutional power
+- self_delusion: specifically a self-image story ("I'm fine / I'm great / I'm the best") contradicted by behavior/evidence in the same moment
+If unsure between self_delusion vs social_fail/anxiety_escalation, prefer the more specific one (social_fail/anxiety_escalation) unless there is an explicit self-image contradiction.
 For twist_potential: score high if the input has self-delusion, status gap, or absurd logic. Score low if it is a neutral factual statement with no tension.
 Return ONLY the JSON. Nothing else."""
 
