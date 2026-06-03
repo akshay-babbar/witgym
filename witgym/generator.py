@@ -6,19 +6,27 @@ from typing import List, Set
 from collections import Counter
 import re as _re
 from loguru import logger
-from transformers import LogitsProcessorList
+from transformers import LogitsProcessorList, NoBadWordsLogitsProcessor
 from witgym.model import generate_text, ClichePenaltyProcessor
+from witgym import config
 from witgym.schemas import (
-    ComedyMetadata, TranscriptScene, CandidateResponse, ComedyArchetype
+    ComedyMetadata, TranscriptScene, CandidateResponse,
 )
 
 PERSONA_INSTRUCTIONS = {
     "cynic": (
+        "PATHWAY SELECTION — pick one silently before generating:\n"
+        "  PATH A (subtext contains avoidance, spiral, or self-protection): "
+        "Name the specific function the behavior is performing. "
+        "What is it protecting? What does it cost? State it precisely.\n"
+        "  PATH B (subtext contains status claim or competence assertion): "
+        "State the actual outcome as if it has already become concrete. Past tense. "
+        "One specific image or action anchored in the user's situation.\n"
+        "You pick the path silently. Output only the wit line — never the path label.\n\n"
         "You've seen this exact rationalization a hundred times. "
-        "You're not angry about it — you're just tired. "
-        "State what's actually happening with the weariness of someone who has been right about this for years. "
-        "Open with the situation, the consequence, or the outcome as your subject — "
-        "lead with something concrete and specific, not a generic observation about the person."
+        "You're not angry — you're just tired. "
+        "Lead with something concrete: the situation, the consequence, the outcome. "
+        "Not a generic observation about the person."
     ),
     "conviction": (
         "You have a firm, specific belief about how this situation works. "
@@ -28,24 +36,49 @@ PERSONA_INSTRUCTIONS = {
         "No irony. No wink. Absolute conviction."
     ),
     "absurdist": (
+        "PATHWAY SELECTION — pick one silently before generating:\n"
+        "  PATH A (subtext contains fear, avoidance, or escalation logic — anxiety_escalation or existential tension): "
+        "Follow the anxiety's own internal logic to its physical inevitable endpoint. "
+        "Name the specific form: a concrete image, measurable action, or physical object "
+        "from the user's situation.\n"
+        "  PATH B (connector field is non-null OR input has subject\u2192action\u2192object structure): "
+        "Keep the verb/action. Find the domain where that exact action applied to a different object "
+        "reveals the identical human truth. Deliver from that domain without naming the parallel.\n"
+        "You pick the path silently. Output only the wit line — never the path label.\n\n"
         "You're the only person in the room who sees where this logically ends. "
         "You're not being weird — you're just following the math. "
-        "State the inevitable conclusion with the calm of someone reading from a manual. "
-        "End with a single, specific concrete image that makes the conclusion visible — "
-        "not an abstraction, not a restatement. A physical object, a measurable action, a named institution."
+        "End with a single concrete image anchored in the user's situation. "
+        "Not an abstraction. A physical object or measurable action the input already implies."
+    ),
+    "bisociate": (
+        "PATHWAY SELECTION — pick one silently before generating:\n"
+        "  PATH A (connector field is non-null): "
+        "Your punchline must land on the second meaning of the connector word. "
+        "The setup's expected reading of that word is the straight path. You take the other one.\n"
+        "  PATH B (connector is null): "
+        "Apply the dominant verb from the subtext to the most structurally incongruous object from daily life. "
+        "Deliver from inside that object's world, as if you've been there all along. "
+        "Do not name the parallel. Do not explain the connection.\n"
+        "You pick the path silently. Output only the wit line — never the path label.\n\n"
+        "You notice that what they're describing is not unique to their situation. "
+        "The same need, avoidance, or craving exists somewhere completely different. "
+        "State the parallel as if it is obvious and everyone already knows this. "
+        "Do not reference any topic already mentioned in the conversation context."
     ),
 }
 
 GENERATION_PROMPT = """\
-You are a sharp, brief conversational wit engine.
-You are responding to: "{user_input}"
+You're in the writer's room. Someone just said: "{user_input}" — what's the line?
 
 SITUATION ANALYSIS:
 - What's happening: {surface}
 - What they really mean: {subtext}
 - The comedy mechanism: {archetype}
+- Archetype confidence: {archetype_confidence}/10
 - The tension: {tension_type}
 - Power dynamic: {power_dynamic}
+- Speaker strategy: {speaker_strategy}
+- Connector word (two readings, if present): {connector}
 
 HUMAN COMEDY PRECEDENT (structurally similar situations — same violation type, NOT same words):
 {scenes_block}
@@ -61,8 +94,11 @@ CONSTRAINTS (ALL must be satisfied):
 5. Lead with the punchline. Do not build up to it.
 6. No preamble. No "Here's a response:". No hedging. Start with the wit directly.
 7. Stay benign. The violation must be recognizable, not offensive.
-8. Do NOT use these violation types already used in this conversation: {used_archetypes_str}
-9. Suppress this boring response style: "{obvious_response}"
+8. Suppress this boring response style: "{obvious_response}"
+9. NEVER output "PATH A", "PATH B", "PATHWAY SELECTION", or any routing label. Output ONLY the comedy line.
+10. If any phrase from the precedent block appears in your line, rewrite it — use the mechanism only, never the precedent's wording.
+11. DOMAIN ANCHOR — Do not introduce institutions, departments, legal process, or workplace nouns unless already implied by surface, subtext, or power_dynamic. Prefer nouns from the user input.
+12. Treat unexpected domain shifts (HR, litigation, supply chain, middle-manager hierarchy) as defects unless the input already implies them.
 
 CONVERSATION CONTEXT (last turns, for callbacks):
 {context_str}
@@ -70,14 +106,46 @@ CONVERSATION CONTEXT (last turns, for callbacks):
 Respond now with ONE or TWO sentences. Nothing else."""
 
 
+def _normalize_for_overlap(text: str) -> str:
+    """Lowercase, strip punctuation, collapse whitespace for n-gram checks."""
+    text = text.lower()
+    text = _re.sub(r"[^\w\s]", " ", text)
+    return " ".join(text.split())
+
+
+def _ngrams(words: List[str], n: int) -> Set[str]:
+    if len(words) < n:
+        return set()
+    return {" ".join(words[i : i + n]) for i in range(len(words) - n + 1)}
+
+
+def _precedent_prompt_texts(scenes: List[TranscriptScene]) -> List[str]:
+    """Text actually injected into the generation prompt (overlap guard surface)."""
+    return [s.why_it_works for s in scenes]
+
+
+def _copies_retrieved_phrase(candidate: str, scenes: List[TranscriptScene], n: int) -> bool:
+    """True if candidate shares an n-word contiguous phrase with precedent prompt text."""
+    cand_words = _normalize_for_overlap(candidate).split()
+    if len(cand_words) < n:
+        return False
+    cand_grams = _ngrams(cand_words, n)
+    if not cand_grams:
+        return False
+    for source in _precedent_prompt_texts(scenes):
+        src_grams = _ngrams(_normalize_for_overlap(source).split(), n)
+        if cand_grams & src_grams:
+            return True
+    return False
+
 
 def _build_scenes_block(scenes: List[TranscriptScene]) -> str:
+    """Mechanism-only precedent — tags + why_it_works, no raw setup or dialogue."""
     blocks = []
     for s in scenes:
         blocks.append(
-            f"  Show: {s.show} | Character: {s.character}\n"
-            f"  Situation: {s.setup}\n"
-            f"  What they said: {s.response}\n"
+            f"  Archetype: {s.archetype.value} | Tension: {s.tension_type.value} | "
+            f"Distance: {s.violation_distance.value}\n"
             f"  Why it worked: {s.why_it_works}"
         )
     return "\n\n".join(blocks)
@@ -90,7 +158,6 @@ def generate_candidates(
     model,
     tokenizer,
     context_str: str,
-    used_archetypes: set,
     personas_to_run: List[str] = None,
 ) -> List[CandidateResponse]:
     """Generate persona candidates (1-3) with ClichePenalty applied.
@@ -99,7 +166,6 @@ def generate_candidates(
     None = all three (default). Engine gates this based on twist_potential.
     """
     scenes_block = _build_scenes_block(scenes)
-    used_str = ", ".join(a.value for a in used_archetypes) if used_archetypes else "none yet"
 
     active_personas = {
         name: instr for name, instr in PERSONA_INSTRUCTIONS.items()
@@ -108,25 +174,41 @@ def generate_candidates(
 
     cliche_processor = ClichePenaltyProcessor(metadata.obvious_response, tokenizer)
     processors = LogitsProcessorList([cliche_processor])
+    if config.ENABLE_BAD_WORD_GUARD:
+        bad_words_ids = [
+            tokenizer.encode(phrase, add_special_tokens=False)
+            for phrase in config.BAD_WORD_PHRASES
+        ]
+        processors.append(NoBadWordsLogitsProcessor(bad_words_ids, eos_token_id=tokenizer.eos_token_id))
 
     candidates = []
+    ngram_n = config.OVERLAP_NGRAM_SIZE
+    last_raw = None
+    last_persona = None
     for persona_name, persona_instruction in active_personas.items():
         prompt = GENERATION_PROMPT.format(
             user_input=user_input,
             surface=metadata.surface,
             subtext=metadata.subtext,
             archetype=metadata.archetype.value,
+            archetype_confidence=metadata.archetype_confidence,
             tension_type=metadata.tension_type.value,
             power_dynamic=metadata.power_dynamic,
+            speaker_strategy=metadata.speaker_strategy or "none",
+            connector=metadata.connector or "none",
             scenes_block=scenes_block,
             persona_name=persona_name.upper(),
             persona_instruction=persona_instruction,
-            used_archetypes_str=used_str,
             obvious_response=metadata.obvious_response,
             context_str=context_str or "(no prior context)",
         )
 
         raw = generate_text(prompt, model, tokenizer, config_type="generate", logits_processors=processors)
+        last_raw, last_persona = raw, persona_name
+        if config.ENABLE_OVERLAP_GUARD and _copies_retrieved_phrase(raw, scenes, ngram_n):
+            logger.warning(f"[{persona_name}] copies precedent phrasing — dropping candidate")
+            continue
+
         logger.info(f"[{persona_name}] → {raw[:80]}...")
 
         candidates.append(CandidateResponse(
@@ -153,22 +235,38 @@ def generate_candidates(
                 extra_ids = tokenizer.encode(word, add_special_tokens=False)
                 cliche_processor.penalty_ids.update(extra_ids[:2])  # first 2 tokens of each word
 
+    if not candidates and last_raw:
+        logger.warning(f"All candidates dropped — keeping last line from {last_persona}")
+        candidates.append(CandidateResponse(
+            persona=last_persona,
+            text=last_raw.strip(),
+            violation_type=f"{metadata.archetype.value} via {last_persona} lens",
+        ))
+
     return candidates
 
 
 RANK_PROMPT = """\
 You are judging {n} comedy responses to: "{user_input}"
+Connector word (has two simultaneous readings in the input): "{connector}"
+Extracted context:
+- subtext: "{subtext}"
+- archetype: "{archetype}"
+- tension_type: "{tension_type}"
+- speaker_strategy: "{speaker_strategy}"
 
 {candidates_block}
 
 Pick the funniest one using this exact priority order:
 
-1. CONCRETE IMAGE — The best response ends with a single specific, unexpected image or action that makes the human truth visible. Responses using only abstract concepts or bureaucratic jargon with no specific image always lose. "The drill is merely a gentle hug" beats "the patient submitted a fitness statement."
-2. SHARPNESS — Does the punchline land on first read without unpacking?
-3. TRUTH — Does it name something recognizable that nobody said out loud?
-4. BREVITY — If sharpness and image quality are equal, pick the shorter one.
+1. DOMAIN ANCHOR — Prefer lines that stay inside the user's world from surface/subtext. Down-rank candidates that import HR, legal process, supply chain, new departments, or institutional bureaucracy unless the user input already implies them. A grounded but slightly softer punchline beats a sharper line that drifts into an unsupported external domain.
+2. FINAL CLAUSE — The punchline is always the last clause. Judge the quality of the ENDING, not the setup. A sharp ending on a flat setup beats a flat ending on a sharp setup. The best ending is a single specific, unexpected image or action that makes the human truth visible. Responses where the final clause is abstract, bureaucratic, or jargon always lose.
+3. CONNECTOR — If a response lands on the second meaning of the connector word in its punchline, this is a strong quality signal. It means the wit is structurally grounded in the input, not floating free.
+4. SHARPNESS — Does the punchline land on first read without unpacking?
+5. TRUTH — Does it name something recognizable that nobody said out loud?
+6. BREVITY — If sharpness and image quality are equal, pick the shorter one.
 
-A sharp 20-word line with a specific concrete image beats a flat 10-word line of jargon.
+A sharp 20-word line with a specific concrete ending beats a flat 10-word line of jargon.
 Responses that are purely bureaucratic or purely abstract always lose, regardless of length.
 
 Reply ONLY with a single digit ({valid_digits}). Nothing else."""
@@ -176,6 +274,7 @@ Reply ONLY with a single digit ({valid_digits}). Nothing else."""
 
 def rank_candidates(
     user_input: str,
+    metadata: ComedyMetadata,
     candidates: List[CandidateResponse],
     model,
     tokenizer,
@@ -228,6 +327,11 @@ def rank_candidates(
     prompt = RANK_PROMPT.format(
         n=len(shuffled),
         user_input=user_input,
+        connector=(metadata.connector or "none"),
+        subtext=metadata.subtext,
+        archetype=metadata.archetype.value,
+        tension_type=metadata.tension_type.value,
+        speaker_strategy=metadata.speaker_strategy or "none",
         candidates_block="\n".join(lines),
         valid_digits="/".join(digits),
     )

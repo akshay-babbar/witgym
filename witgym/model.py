@@ -1,6 +1,7 @@
 """Model loading and ClichePenaltyProcessor."""
 import re
 import torch
+import gc
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -153,6 +154,7 @@ def generate_text(
     # Free KV cache + intermediate buffers from unified memory after each call
     if config.DEVICE == "mps":
         torch.mps.empty_cache()
+        gc.collect()
 
     new_tokens = output_ids[0][inputs["input_ids"].shape[-1]:]
     raw = tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
