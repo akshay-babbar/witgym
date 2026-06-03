@@ -31,11 +31,14 @@ class ComedyMetadata(BaseModel):
     surface: str
     subtext: str
     archetype: ComedyArchetype
+    archetype_confidence: int = 7  # 1-10: confidence in archetype selection
     tension_type: TensionType
     power_dynamic: str
     obvious_response: str
     violation_distance: ViolationDistance
     twist_potential: int = 5  # 1-10: comedy richness of the input; drives pipeline gating
+    connector: Optional[str] = None  # Word/phrase with two simultaneous readings; null if absent
+    speaker_strategy: Optional[str] = None  # Brief guidance for how the speaker is trying to be perceived
 
 
 class TranscriptScene(BaseModel):

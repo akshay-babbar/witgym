@@ -15,11 +15,14 @@ Return ONLY a JSON object with these exact fields (no explanation, no markdown, 
   "surface": "what was literally said in one sentence",
   "subtext": "what the speaker actually means or feels",
   "archetype": one of ["status_assertion", "self_delusion", "power_inversion", "anxiety_escalation", "social_fail", "misplaced_conf"],
+  "archetype_confidence": an integer from 1 to 10 (how confident you are in the archetype choice),
   "tension_type": one of ["social_embarrass", "existential", "status_threat", "identity_expose", "logic_collapse"],
   "power_dynamic": "who has power and who doesn't, one sentence",
+  "speaker_strategy": "one short phrase describing how the speaker is trying to be perceived (e.g. competent, unbothered, in-control), or null if unclear",
   "obvious_response": "the most boring, expected response to this input",
   "violation_distance": one of ["mild", "moderate", "sharp"],
-  "twist_potential": an integer from 1 to 10 rating how much hidden comedy tension is in this input (1=completely flat, 10=extremely rich setup for wit)
+  "twist_potential": an integer from 1 to 10 rating how much hidden comedy tension is in this input (1=completely flat, 10=extremely rich setup for wit),
+  "connector": "the specific word or phrase in the input that could mean two different things simultaneously, or null if no such word exists"
 }}
 
 Think carefully about the ARCHETYPE — pick the one that most accurately describes the comedy mechanism hiding in this input.
@@ -32,6 +35,7 @@ Archetype selection guidance (avoid overusing self_delusion):
 - self_delusion: specifically a self-image story ("I'm fine / I'm great / I'm the best") contradicted by behavior/evidence in the same moment
 If unsure between self_delusion vs social_fail/anxiety_escalation, prefer the more specific one (social_fail/anxiety_escalation) unless there is an explicit self-image contradiction.
 For twist_potential: score high if the input has self-delusion, status gap, or absurd logic. Score low if it is a neutral factual statement with no tension.
+For connector: look for a single word or short phrase that carries an expected meaning in context AND a second meaning that reframes the situation. Most inputs will have null. Return null unless a genuine dual-reading exists (e.g. "manage" can mean control people or barely cope; "balance" can mean financial or emotional equilibrium).
 Return ONLY the JSON. Nothing else."""
 
 

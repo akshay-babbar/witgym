@@ -62,28 +62,31 @@ class WitGymEngine:
         scenes = retrieve_scenes(
             self.index,
             metadata,
-            self.conversation.used_archetypes,
             self.embed_model,
         )
 
-        # PASS 2 — Generate persona candidates.
-        # Medium inputs (4-6): run cynic + absurdist only.
-        # Rich inputs (> 6): run all three including conviction.
+        # PASS 2 — persona selection by twist_potential
+        # ≤6: light inputs — cynic + absurdist only (conviction needs richer tension)
+        # 7-8: full standard set — cynic, conviction, absurdist
+        # >8: peak inputs — bisociate replaces conviction (domain-pivot vs. within-frame logic)
         context_str = self.conversation.get_context_string()
-        personas_to_run = None  # None = all three
+        personas_to_run = ["cynic", "conviction", "absurdist"]  # default: standard 3
         if metadata.twist_potential <= 6:
-            personas_to_run = ["cynic", "absurdist"]  # Conviction needs richer tension to land cleanly
-            logger.info(f"twist_potential={metadata.twist_potential} ≤ 6 — skipping conviction")
+            personas_to_run = ["cynic", "absurdist"]
+            logger.info(f"twist_potential={metadata.twist_potential} ≤ 6 — cynic + absurdist only")
+        elif metadata.twist_potential > 8:
+            personas_to_run = ["cynic", "absurdist", "bisociate"]
+            logger.info(f"twist_potential={metadata.twist_potential} > 8 — bisociate replaces conviction")
 
         candidates = generate_candidates(
             user_input, metadata, scenes,
             self.model, self.tokenizer,
-            context_str, self.conversation.used_archetypes,
+            context_str,
             personas_to_run=personas_to_run,
         )
 
         # RANK — Pick best candidate
-        selected = rank_candidates(user_input, candidates, self.model, self.tokenizer)
+        selected = rank_candidates(user_input, metadata, candidates, self.model, self.tokenizer)
 
         # COMPRESS — Swartzwelder pass: generate loose, cut ruthless (skips if ≤12 words)
         selected = compress_winner(selected, self.model, self.tokenizer)

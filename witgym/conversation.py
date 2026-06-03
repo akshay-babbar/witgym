@@ -20,29 +20,33 @@ class ConversationManager:
         self.history: List[Tuple[str, str]] = []   # (user, assistant)
         self.used_archetypes: Set[ComedyArchetype] = set()
         self._summary: str = ""  # Compressed summary of old turns
-        self._mechanisms: List[Tuple[str, str, str]] = []  # (archetype, tension, distance)
+        self._mechanisms: List[Tuple[str, str, str, str, str]] = []  # (user_input, subtext, archetype, tension, distance)
 
     def add_turn(self, user_input: str, response: str, metadata: ComedyMetadata):
         self.history.append((user_input, response))
         self.used_archetypes.add(metadata.archetype)
         self._mechanisms.append((
+            user_input,
+            metadata.subtext,
             metadata.archetype.value,
             metadata.tension_type.value,
             metadata.violation_distance.value,
         ))
 
     def get_context_string(self) -> str:
-        """Return the last N turns as mechanism-only context.
+        """Return the last N turns as mechanism-only context (archetype + tension).
 
-        Structural goal: preserve callback potential (what kind of jokes were made),
-        while avoiding lexical bleed from raw user/assistant text across turns.
+        Mechanism-only context for callbacks — no prior topic text. user_input and subtext are
+        stored in _mechanisms but intentionally not exposed here — topic contamination
+        makes turn-level evaluation unreliable and anchors the current joke to prior topics.
+        Re-enable richer output when multi-turn callback quality is validated.
         """
         recent = self._mechanisms[-config.KEEP_LAST_N_TURNS:]
         lines = []
         if self._summary:
             lines.append(f"[Earlier conversation summary]: {self._summary}")
-        for i, (arch, tension, dist) in enumerate(recent, 1):
-            lines.append(f"Turn -{len(recent) - i + 1}: archetype={arch}, tension={tension}, distance={dist}")
+        for i, (user_in, subtext, arch, tension, dist) in enumerate(recent, 1):
+            lines.append(f"Turn -{len(recent) - i + 1}: archetype={arch}, tension={tension}")
         return "\n".join(lines)
 
     def needs_compression(self, tokenizer) -> bool:
