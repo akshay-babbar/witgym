@@ -16,6 +16,7 @@ dependencies = [
     "huggingface-hub>=0.22.0",
     "datasets>=2.19.0",
     "sentencepiece>=0.2.0",
+    "gradio==5.29.0",
 ]
 
 [project.scripts]
