@@ -10,4 +10,4 @@ python-dotenv>=1.0.0
 huggingface-hub>=0.22.0
 datasets>=2.19.0
 sentencepiece>=0.2.0
-gradio>=5.0.0
+gradio==6.17.3
