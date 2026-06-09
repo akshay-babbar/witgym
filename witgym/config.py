@@ -21,7 +21,7 @@ DTYPE = torch.bfloat16
 # Sampling
 EXTRACT_TEMP = 0.2
 EXTRACT_DO_SAMPLE = False
-GENERATE_TEMP = 1.15  # lowered after anchor/retrieval fixes to reduce domain invention
+GENERATE_TEMP = 1.0  # slightly lower to reduce arbitrary domain invention
 GENERATE_MIN_P = 0.06
 GENERATE_MAX_NEW_TOKENS = 40
 RANK_TEMP = 0.1
