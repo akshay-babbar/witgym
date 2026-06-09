@@ -43,32 +43,32 @@ STARTERS = [
     "I went to bed early last night.",
 ]
 
-TRANSCRIPT_HEIGHT = 560
+TRANSCRIPT_MIN_HEIGHT = 420
+TRANSCRIPT_MAX_HEIGHT = 560
 
 APP_CSS = """
 #witgym-main { max-width: 1200px; margin: 0 auto; width: 100%; }
 
 .witgym-header {
     display: flex; flex-direction: column; align-items: center;
-    text-align: center; gap: 0.35rem; margin-bottom: 1rem;
+    text-align: center; gap: 0.35rem; margin-bottom: 0.75rem;
 }
 .witgym-logo { width: 56px; height: 56px; flex-shrink: 0; }
-.witgym-title { font-size: 2rem; font-weight: 700; margin: 0; color: #3d3429; }
-.witgym-tagline { color: #6b6560; margin: 0; font-size: 0.95rem; }
+.witgym-title { font-size: 2.15rem; font-weight: 700; margin: 0; color: #3d3429; }
+.witgym-tagline { color: #6b6560; margin: 0; font-size: 1.05rem; }
 
 .wg-transcript {
-    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-    font-size: 15px; line-height: 1.55; color: #1a1a1a;
+    font-size: 17px; line-height: 1.6; color: #1a1a1a;
 }
 .wg-empty { color: #777; font-style: italic; padding: 1.5rem 0; text-align: center; }
 .wg-turn { margin-bottom: 1.5rem; }
 .wg-turn--thinking { cursor: wait; }
-.wg-user { color: #16a34a; font-weight: 700; margin-bottom: 0.75rem; font-size: 16px; }
+.wg-user { color: #16a34a; font-weight: 700; margin-bottom: 0.75rem; font-size: 18px; }
 .wg-thinking {
     display: flex; align-items: center; gap: 0.5rem;
-    color: #6b6258; font-style: italic; font-size: 0.95rem;
+    color: #6b6258; font-style: italic; font-size: 1.05rem;
     padding: 0.65rem 0.75rem; margin-top: 0.25rem;
-    background: #f3efe8; border-radius: 6px; border: 1px solid #e0d8cc;
+    background: #f3efe8; border-radius: 10px; border: 1px solid #e0d8cc;
 }
 .wg-thinking-icon { flex-shrink: 0; animation: wg-spin 0.85s linear infinite; }
 @keyframes wg-spin { to { transform: rotate(360deg); } }
@@ -84,20 +84,19 @@ APP_CSS = """
     flex: 1; height: 1px; background: #d8d0c4;
 }
 .wg-coach-divider-label {
-    white-space: nowrap; font-style: italic; color: #6b6258; font-size: 0.78rem;
+    white-space: nowrap; font-style: italic; color: #6b6258; font-size: 0.92rem; font-weight: 600;
 }
 .wg-coach-reply {
     margin-top: 1.1rem; padding: 0.9rem 1rem;
     background: #f7f3ec; border: 1px solid #d4cbb8; border-left: 3px solid #2d6a4f;
-    border-radius: 8px;
+    border-radius: 12px;
 }
 .wg-coach-reply-header {
     font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
     text-transform: uppercase; color: #2d6a4f; margin-bottom: 0.45rem;
 }
 .wg-coach-reply-body {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 1.05rem; line-height: 1.5; color: #2a2520;
+    font-size: 1.15rem; line-height: 1.55; color: #2a2520;
 }
 .wg-coach-reply--compact { margin-top: 0.75rem; }
 .wg-rule { border-top: 1px solid #e8e2d8; margin: 0.75rem 0; }
@@ -105,9 +104,9 @@ APP_CSS = """
 .wg-dim-italic { color: #888; font-style: italic; }
 .wg-cyan { color: #0891b2; }
 .wg-bold { font-weight: 600; }
-.wg-panel { border-radius: 6px; padding: 0.65rem 0.85rem; margin: 0.5rem 0;
-    border: 1px solid; font-size: 14px; }
-.wg-panel-title { font-weight: 700; margin-bottom: 0.35rem; font-size: 13px; }
+.wg-panel { border-radius: 10px; padding: 0.65rem 0.85rem; margin: 0.5rem 0;
+    border: 1px solid; font-size: 15px; }
+.wg-panel-title { font-weight: 700; margin-bottom: 0.35rem; font-size: 14px; }
 .wg-panel-yellow { background: #fffbeb; border-color: #fbbf24; color: #92400e; }
 .wg-panel-yellow .wg-panel-title { color: #b45309; }
 .wg-panel-blue { background: #eff6ff; border-color: #60a5fa; color: #1e3a5f; }
@@ -121,6 +120,15 @@ APP_CSS = """
 .wg-starter-btn button {
     width: 100%; text-align: left; white-space: normal;
     height: auto !important; min-height: 2.25rem; line-height: 1.35;
+}
+
+#wg-chat-shell,
+#wg-starters-shell {
+    border: 1px solid rgba(216, 212, 200, 0.95);
+    background: rgba(250, 249, 246, 0.88);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(61, 52, 41, 0.06);
 }
 """
 
@@ -252,6 +260,16 @@ def _theme():
             primary_hue=gr.themes.colors.stone,
             secondary_hue=gr.themes.colors.amber,
             neutral_hue=gr.themes.colors.stone,
+            text_size=gr.themes.sizes.text_lg,
+            radius_size=gr.themes.sizes.radius_lg,
+            font=(
+                "Aptos",
+                gr.themes.GoogleFont("EB Garamond"),
+                "Garamond",
+                "Georgia",
+                "Times New Roman",
+                "serif",
+            ),
         )
         .set(
             body_background_fill="#fffff8",
@@ -264,54 +282,57 @@ def _theme():
 
 
 def build_ui():
-    with gr.Blocks(title="WitGym") as demo:
+    with gr.Blocks(title="WitGym", fill_height=True) as demo:
         gr.HTML(_header_html())
 
         session_state = gr.State(_new_session())
 
         with gr.Column(elem_id="witgym-main"):
-            with gr.Row():
+            with gr.Row(equal_height=True):
                 with gr.Column(scale=3):
-                    transcript = gr.HTML(
-                        value=format_transcript_html([]),
-                        max_height=TRANSCRIPT_HEIGHT,
-                        autoscroll=True,
-                        show_label=False,
-                        padding=True,
-                    )
-                    user_input = gr.Textbox(
-                        show_label=False,
-                        placeholder="Describe a situation… (Enter to send)",
-                        lines=1,
-                        max_lines=1,
-                    )
-                    with gr.Row():
-                        submit_btn = gr.Button(
-                            "Start Practicing Humour",
-                            variant="primary",
-                            scale=4,
+                    with gr.Group(elem_id="wg-chat-shell"):
+                        transcript = gr.HTML(
+                            value=format_transcript_html([]),
+                            min_height=TRANSCRIPT_MIN_HEIGHT,
+                            max_height=TRANSCRIPT_MAX_HEIGHT,
+                            autoscroll=True,
+                            show_label=False,
+                            padding=True,
                         )
-                        clear_btn = gr.Button(
-                            "Clear conversation",
-                            size="sm",
-                            variant="secondary",
-                            scale=1,
+                        user_input = gr.Textbox(
+                            show_label=False,
+                            placeholder="Describe a situation… (Enter to send)",
+                            lines=1,
+                            max_lines=1,
                         )
+                        with gr.Row():
+                            submit_btn = gr.Button(
+                                "Start Practicing Humour",
+                                variant="primary",
+                                scale=4,
+                            )
+                            clear_btn = gr.Button(
+                                "Clear conversation",
+                                size="sm",
+                                variant="secondary",
+                                scale=1,
+                            )
                 with gr.Column(scale=1):
-                    gr.Markdown("**Try a starter**")
-                    for text in STARTERS:
-                        starter_btn = gr.Button(
-                            text,
-                            size="sm",
-                            variant="secondary",
-                            elem_classes=["wg-starter-btn"],
-                        )
-                        starter_btn.click(
-                            fn=fill_starter,
-                            inputs=[gr.State(text)],
-                            outputs=user_input,
-                            queue=False,
-                        )
+                    with gr.Group(elem_id="wg-starters-shell"):
+                        gr.Markdown("**Try a starter**")
+                        for text in STARTERS:
+                            starter_btn = gr.Button(
+                                text,
+                                size="sm",
+                                variant="secondary",
+                                elem_classes=["wg-starter-btn"],
+                            )
+                            starter_btn.click(
+                                fn=fill_starter,
+                                inputs=[gr.State(text)],
+                                outputs=user_input,
+                                queue=False,
+                            )
 
         submit_btn.click(
             fn=practice,
