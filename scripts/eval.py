@@ -34,7 +34,7 @@ TEST_INPUTS = [
 ]
 
 
-def run_eval(tag: str, index_path: str = "data/index.json") -> None:
+def run_eval(tag: str, index_path: str = "data/index.npz") -> None:
     """Run all 5 test inputs, save results snapshot."""
     from witgym.engine import WitGymEngine
 
@@ -144,7 +144,7 @@ def main():
     parser = argparse.ArgumentParser(description="WitGym closed-loop evaluator")
     parser.add_argument("--tag", choices=["before", "after"], help="Run eval and save snapshot with this tag")
     parser.add_argument("--compare", action="store_true", help="Compare before vs after snapshots")
-    parser.add_argument("--index", default="data/index.json")
+    parser.add_argument("--index", default="data/index.npz")
     args = parser.parse_args()
 
     if args.compare:

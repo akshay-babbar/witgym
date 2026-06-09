@@ -38,7 +38,7 @@ RETRIEVE_POOL_SIZE = 12
 ENABLE_CROSS_ENCODER_RERANK = True
 RERANK_MODEL_ID = "cross-encoder/ettin-reranker-32m-v1"
 RERANK_DEVICE = "cpu"  # keep 9B on MPS; rerank on CPU to avoid unified-memory spikes
-INDEX_PATH = "data/index.json"
+INDEX_PATH = "data/index.npz"
 TRANSCRIPT_DIR = "data/transcripts"
 
 # Generation guards

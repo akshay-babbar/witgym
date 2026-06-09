@@ -4,6 +4,7 @@ Implements Principle 2: query is the abstract comedy metadata, not raw text.
 Returns analogous situations (same violation type), not similar words.
 """
 import json
+import os
 from typing import List
 from loguru import logger
 import numpy as np
@@ -15,20 +16,32 @@ _reranker_cache = None
 
 
 def load_index(index_path: str = config.INDEX_PATH) -> dict:
-    """Load index from JSON. Caches in memory."""
+    """Load index from NPZ (or legacy JSON). Caches in memory."""
     global _index_cache
     if _index_cache is not None:
         return _index_cache
 
-    with open(index_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    path = index_path
+    if path.endswith(".json") and not os.path.exists(path):
+        npz_fallback = path.removesuffix(".json") + ".npz"
+        if os.path.exists(npz_fallback):
+            path = npz_fallback
 
-    # Reconstruct TranscriptScene objects and numpy embeddings
-    scenes = [TranscriptScene.model_validate(s) for s in data["scenes"]]
-    embeddings = np.array(data["embeddings"], dtype=np.float32)
+    if path.endswith(".npz"):
+        archive = np.load(path, allow_pickle=True)
+        scenes = [
+            TranscriptScene.model_validate(s)
+            for s in json.loads(archive["scenes_json"].tobytes().decode("utf-8"))
+        ]
+        embeddings = np.asarray(archive["embeddings"], dtype=np.float32)
+    else:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        scenes = [TranscriptScene.model_validate(s) for s in data["scenes"]]
+        embeddings = np.array(data["embeddings"], dtype=np.float32)
 
     _index_cache = {"scenes": scenes, "embeddings": embeddings}
-    logger.info(f"Index loaded: {len(scenes)} scenes")
+    logger.info(f"Index loaded: {len(scenes)} scenes from {path}")
     return _index_cache
 
 

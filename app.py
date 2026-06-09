@@ -140,7 +140,7 @@ _warmup_error: str | None = None
 def _ensure_index():
     if not Path(INDEX_PATH).exists():
         raise FileNotFoundError(
-            f"Index not found at {INDEX_PATH}. Run `witgym-index` or bundle data/index.json in the Space."
+            f"Index not found at {INDEX_PATH}. Run `witgym-index` or bundle data/index.npz in the Space."
         )
 
 

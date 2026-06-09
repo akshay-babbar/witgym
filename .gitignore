@@ -1,5 +1,8 @@
-# Local data and indexes (generated from transcripts)
-data/
+# Local data (generated); ship compact index + transcripts for Spaces
+data/*
+!data/index.npz
+!data/transcripts/
+!data/transcripts/**
 
 # Virtual environments
 .venv/

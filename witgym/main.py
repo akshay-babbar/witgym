@@ -70,7 +70,7 @@ def _show_debug_panel(result):
 def chat_cmd():
     parser = argparse.ArgumentParser(description="WitGym — conversational comedy engine")
     parser.add_argument("--debug", action="store_true", help="Show metadata, retrieved scenes, and all candidates")
-    parser.add_argument("--index", default="data/index.json", help="Path to the index file")
+    parser.add_argument("--index", default="data/index.npz", help="Path to the index file")
     args = parser.parse_args()
 
     _setup_logging(args.debug)
@@ -123,7 +123,7 @@ def chat_cmd():
 def index_cmd():
     parser = argparse.ArgumentParser(description="WitGym — build RAG index from transcript files")
     parser.add_argument("--transcripts", default="data/transcripts", help="Directory containing .txt transcript files")
-    parser.add_argument("--output", default="data/index.json", help="Output index path")
+    parser.add_argument("--output", default="data/index.npz", help="Output index path")
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
 

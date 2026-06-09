@@ -1,4 +1,4 @@
-"""Offline indexer — parse transcript files, embed comedy metadata, persist to JSON.
+"""Offline indexer — parse transcript files, embed comedy metadata, persist to NPZ.
 
 Implements Principle 2: indexes on abstract comedy fields, NOT raw text.
 The embedding is of: "{archetype} {tension_type} {setup_summary}"
@@ -51,7 +51,7 @@ def _make_index_text(scene: TranscriptScene) -> str:
 
 
 def build_index(transcript_dir: str = config.TRANSCRIPT_DIR, index_path: str = config.INDEX_PATH):
-    """Parse all .txt files, embed comedy metadata strings, save index JSON."""
+    """Parse all .txt files, embed comedy metadata strings, save compressed index."""
     from sentence_transformers import SentenceTransformer
 
     transcript_path = Path(transcript_dir)
@@ -89,15 +89,15 @@ def build_index(transcript_dir: str = config.TRANSCRIPT_DIR, index_path: str = c
         show_progress_bar=True,
     )
 
-    # Persist to JSON
-    index_data = {
-        "scenes": [s.model_dump() for s in all_scenes],
-        "embeddings": embeddings.tolist(),
-        "index_texts": index_texts,
-    }
+    # Persist as compressed NPZ (~6 MB vs ~37 MB JSON float bloat; fits HF 10 MiB git limit)
     os.makedirs(os.path.dirname(index_path) if os.path.dirname(index_path) else ".", exist_ok=True)
-    with open(index_path, "w", encoding="utf-8") as f:
-        json.dump(index_data, f)
+    scenes_json = json.dumps([s.model_dump() for s in all_scenes]).encode("utf-8")
+    np.savez_compressed(
+        index_path,
+        embeddings=embeddings.astype(np.float32),
+        scenes_json=scenes_json,
+        index_texts=np.array(index_texts, dtype=object),
+    )
 
     logger.success(f"Index saved to {index_path} ({len(all_scenes)} scenes)")
     return all_scenes
