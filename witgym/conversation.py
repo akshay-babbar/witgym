@@ -49,10 +49,13 @@ class ConversationManager:
             lines.append(f"Turn -{len(recent) - i + 1}: archetype={arch}, tension={tension}")
         return "\n".join(lines)
 
-    def needs_compression(self, tokenizer) -> bool:
+    def needs_compression(self, tokenizer=None) -> bool:
         """Check if token count of full history exceeds 80% of context window."""
         full_text = self.get_context_string()
-        token_count = len(tokenizer.encode(full_text))
+        if tokenizer is not None:
+            token_count = len(tokenizer.encode(full_text))
+        else:
+            token_count = len(full_text) // 4  # chars-per-token estimate (hf_api path)
         threshold = int(config.CONTEXT_WINDOW * config.COMPRESSION_THRESHOLD)
         if token_count > threshold:
             logger.info(f"Context compression triggered: {token_count} tokens > {threshold}")

@@ -1,17 +1,21 @@
 """WitGym engine — pure function core. No I/O, no UI.
 
-This is the single file that both CLI (main.py) and future Gradio (app.py) call.
+This is the single file that both CLI (main.py) and Gradio (app.py) call.
 """
 import re
+from typing import Optional
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 from witgym import config
 from witgym.model import load_model
-from witgym.schemas import WitGymResponse
+from witgym.schemas import WitGymResponse, fallback_metadata
 from witgym.extractor import extract_comedy_metadata
 from witgym.retriever import load_index, retrieve_scenes
 from witgym.generator import generate_candidates, rank_candidates, compress_winner
 from witgym.conversation import ConversationManager
+from witgym.router import classify_intent, SMALLTALK_REPLY
+
+_shared_resources = None
 
 
 def _cap_two_sentences(text: str) -> str:
@@ -23,20 +27,73 @@ def _cap_two_sentences(text: str) -> str:
     return " ".join(sentences[:2]).strip()
 
 
-class WitGymEngine:
-    """Stateful engine. Load once, call respond() in a loop."""
+class SharedResources:
+    """Heavy resources loaded once per process (model/tokenizer, embedder, index)."""
 
     def __init__(self, index_path: str = config.INDEX_PATH):
-        logger.info("Initialising WitGymEngine...")
+        logger.info("Loading shared WitGym resources...")
         self.model, self.tokenizer = load_model()
         logger.info(f"Loading embedding model: {config.EMBED_MODEL_ID}")
         self.embed_model = SentenceTransformer(config.EMBED_MODEL_ID, device=config.DEVICE)
         self.index = load_index(index_path)
-        self.conversation = ConversationManager()
+        logger.success("Shared resources ready.")
+
+
+def get_shared_resources(index_path: str = config.INDEX_PATH) -> SharedResources:
+    """Process-wide singleton for Spaces / Gradio multi-session use."""
+    global _shared_resources
+    if _shared_resources is None:
+        _shared_resources = SharedResources(index_path=index_path)
+    return _shared_resources
+
+
+class WitGymEngine:
+    """Stateful engine. Load once, call respond() in a loop."""
+
+    def __init__(
+        self,
+        index_path: str = config.INDEX_PATH,
+        resources: Optional[SharedResources] = None,
+        conversation: Optional[ConversationManager] = None,
+    ):
+        if resources is None:
+            logger.info("Initialising WitGymEngine...")
+            self._resources = SharedResources(index_path=index_path)
+        else:
+            self._resources = resources
+        self.conversation = conversation or ConversationManager()
         logger.success("WitGymEngine ready.")
+
+    @property
+    def model(self):
+        return self._resources.model
+
+    @property
+    def tokenizer(self):
+        return self._resources.tokenizer
+
+    @property
+    def embed_model(self):
+        return self._resources.embed_model
+
+    @property
+    def index(self):
+        return self._resources.index
 
     def respond(self, user_input: str) -> WitGymResponse:
         """Full two-pass pipeline. Returns WitGymResponse with all intermediate data."""
+        if classify_intent(user_input) == "smalltalk":
+            logger.info("Small-talk route — skipping humour pipeline")
+            metadata = fallback_metadata(user_input)
+            self.conversation.add_turn(user_input, SMALLTALK_REPLY, metadata)
+            return WitGymResponse(
+                metadata=metadata,
+                retrieved_scenes=[],
+                candidates=[],
+                selected=SMALLTALK_REPLY,
+                route="smalltalk",
+            )
+
         # Check compression before adding new turn
         if self.conversation.needs_compression(self.tokenizer):
             self.conversation.compress(self.model, self.tokenizer)
@@ -56,6 +113,7 @@ class WitGymEngine:
                 retrieved_scenes=[],
                 candidates=[],
                 selected=selected,
+                route="humour",
             )
 
         # RAG — Retrieve analogous situations (not similar text)
@@ -102,4 +160,5 @@ class WitGymEngine:
             retrieved_scenes=scenes,
             candidates=candidates,
             selected=selected,
+            route="humour",
         )

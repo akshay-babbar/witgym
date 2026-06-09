@@ -172,14 +172,17 @@ def generate_candidates(
         if personas_to_run is None or name in personas_to_run
     }
 
-    cliche_processor = ClichePenaltyProcessor(metadata.obvious_response, tokenizer)
-    processors = LogitsProcessorList([cliche_processor])
-    if config.ENABLE_BAD_WORD_GUARD:
-        bad_words_ids = [
-            tokenizer.encode(phrase, add_special_tokens=False)
-            for phrase in config.BAD_WORD_PHRASES
-        ]
-        processors.append(NoBadWordsLogitsProcessor(bad_words_ids, eos_token_id=tokenizer.eos_token_id))
+    processors = None
+    cliche_processor = None
+    if config.LLM_BACKEND == "local" and tokenizer is not None:
+        cliche_processor = ClichePenaltyProcessor(metadata.obvious_response, tokenizer)
+        processors = LogitsProcessorList([cliche_processor])
+        if config.ENABLE_BAD_WORD_GUARD:
+            bad_words_ids = [
+                tokenizer.encode(phrase, add_special_tokens=False)
+                for phrase in config.BAD_WORD_PHRASES
+            ]
+            processors.append(NoBadWordsLogitsProcessor(bad_words_ids, eos_token_id=tokenizer.eos_token_id))
 
     candidates = []
     ngram_n = config.OVERLAP_NGRAM_SIZE
@@ -205,6 +208,9 @@ def generate_candidates(
 
         raw = generate_text(prompt, model, tokenizer, config_type="generate", logits_processors=processors)
         last_raw, last_persona = raw, persona_name
+        if any(phrase in raw for phrase in config.BAD_WORD_PHRASES):
+            logger.warning(f"[{persona_name}] leaked routing label — dropping candidate")
+            continue
         if config.ENABLE_OVERLAP_GUARD and _copies_retrieved_phrase(raw, scenes, ngram_n):
             logger.warning(f"[{persona_name}] copies precedent phrasing — dropping candidate")
             continue
@@ -228,12 +234,11 @@ def generate_candidates(
             w.lower() for w in _re.findall(r"\b\w+\b", raw)
             if w.lower() not in _STOP_WORDS and len(w) > 3
         ]
-        if words:
+        if words and cliche_processor is not None and tokenizer is not None:
             top_words = [w for w, _ in Counter(words).most_common(8)]
-            # Add these word token IDs to the penalty set for next candidates
             for word in top_words:
                 extra_ids = tokenizer.encode(word, add_special_tokens=False)
-                cliche_processor.penalty_ids.update(extra_ids[:2])  # first 2 tokens of each word
+                cliche_processor.penalty_ids.update(extra_ids[:2])
 
     if not candidates and last_raw:
         logger.warning(f"All candidates dropped — keeping last line from {last_persona}")

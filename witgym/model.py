@@ -14,22 +14,46 @@ from witgym import config
 
 _model = None
 _tokenizer = None
+_inference_client = None
+
+
+def _get_inference_client():
+    global _inference_client
+    if _inference_client is None:
+        from huggingface_hub import InferenceClient
+
+        _inference_client = InferenceClient(
+            model=config.LLM_MODEL_ID,
+            token=config.HF_TOKEN or None,
+            provider=config.HF_INFERENCE_PROVIDER,
+        )
+    return _inference_client
 
 
 def load_model():
-    """Load Qwen3.5-4B onto MPS with bfloat16. Cached after first call."""
+    """Load local weights + tokenizer, or (None, None) when LLM_BACKEND=hf_api."""
     global _model, _tokenizer
-    if _model is not None:
+
+    if config.LLM_BACKEND == "hf_api":
+        logger.info(
+            f"HF API backend ({config.HF_INFERENCE_PROVIDER}) — "
+            f"remote inference for {config.LLM_MODEL_ID}, no local weights or tokenizer"
+        )
+        return None, None
+
+    if _model is not None and _tokenizer is not None:
         return _model, _tokenizer
 
-    logger.info(f"Loading model {config.MODEL_ID} on {config.DEVICE} ({config.DTYPE})")
+    logger.info(f"Loading tokenizer for {config.LLM_MODEL_ID}")
     _tokenizer = AutoTokenizer.from_pretrained(
-        config.MODEL_ID,
+        config.LLM_MODEL_ID,
         token=config.HF_TOKEN,
         trust_remote_code=True,
     )
+
+    logger.info(f"Loading model {config.LLM_MODEL_ID} on {config.DEVICE} ({config.DTYPE})")
     _model = AutoModelForCausalLM.from_pretrained(
-        config.MODEL_ID,
+        config.LLM_MODEL_ID,
         dtype=config.DTYPE,
         device_map=None,          # Never device_map="auto" on MPS
         token=config.HF_TOKEN,
@@ -91,6 +115,61 @@ def _strip_thinking(text: str) -> str:
     return text.strip()
 
 
+def _extract_hf_message_text(message) -> str:
+    """Read assistant text from HF chat response.
+
+    Qwen3.5 on Together defaults to thinking mode: output lands in `reasoning`
+  with `content` null unless enable_thinking=False is set via chat_template_kwargs.
+    """
+    content = (message.content or "").strip()
+    if content:
+        return _strip_thinking(content)
+    reasoning = (getattr(message, "reasoning", None) or "").strip()
+    if reasoning:
+        stripped = _strip_thinking(reasoning)
+        if stripped:
+            return stripped
+    return ""
+
+
+def _hf_api_extra_body() -> dict:
+    # Together / Qwen3.5: disable thinking so JSON and wit lines land in `content`
+    # https://www.together.ai/models/qwen3-5-9b
+    return {"chat_template_kwargs": {"enable_thinking": False}}
+
+
+def _generate_via_hf_api(prompt: str, config_type: str) -> str:
+    """Route generation through Hugging Face Inference Providers."""
+    client = _get_inference_client()
+    messages = [{"role": "user", "content": prompt}]
+
+    if config_type == "extract":
+        kwargs = {"max_tokens": config.EXTRACT_MAX_NEW_TOKENS, "temperature": 0.2}
+    elif config_type == "generate":
+        kwargs = {
+            "max_tokens": config.GENERATE_MAX_NEW_TOKENS,
+            "temperature": config.GENERATE_TEMP,
+            "top_p": 0.95,
+        }
+    elif config_type == "rank":
+        kwargs = {"max_tokens": 10, "temperature": 0.1}
+    else:
+        raise ValueError(f"Unknown config_type: {config_type}")
+
+    extra = _hf_api_extra_body()
+    try:
+        output = client.chat_completion(messages, **kwargs, extra_body=extra)
+    except Exception as e:
+        # Some providers reject chat_template_kwargs — retry without it
+        logger.warning(f"HF API extra_body rejected ({e}); retrying without thinking toggle")
+        output = client.chat_completion(messages, **kwargs)
+
+    raw = _extract_hf_message_text(output.choices[0].message)
+    if not raw:
+        logger.warning(f"HF API returned empty text (config_type={config_type})")
+    return raw
+
+
 class ClichePenaltyProcessor(LogitsProcessor):
     """Soft penalty on the opening tokens of the obvious/boring response.
 
@@ -118,6 +197,9 @@ def generate_text(
     logits_processors: LogitsProcessorList = None,
 ) -> str:
     """Unified generation. config_type: 'extract' | 'generate' | 'rank'."""
+    if config.LLM_BACKEND == "hf_api":
+        return _generate_via_hf_api(prompt, config_type)
+
     messages = [{"role": "user", "content": prompt}]
     text = _apply_chat_template_no_think(tokenizer, messages)
     inputs = tokenizer(text, return_tensors="pt").to(config.DEVICE)

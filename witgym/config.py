@@ -2,8 +2,10 @@
 import os
 import torch
 
-# Model
-MODEL_ID = "Qwen/Qwen3.5-9B"
+# LLM — set LLM_MODEL_ID in env / HF Space secrets to swap models (local + API)
+LLM_MODEL_ID = os.getenv("LLM_MODEL_ID", "Qwen/Qwen3.5-9B")
+MODEL_ID = LLM_MODEL_ID  # backward compat for imports
+
 EMBED_MODEL_ID = "BAAI/bge-small-en-v1.5"
 
 # Device — MPS for Apple Silicon, fallback to cuda/cpu
@@ -53,5 +55,12 @@ OVERLAP_NGRAM_SIZE = 6  # contiguous words shared with retrieved dialogue
 CLICHE_LOGIT_PENALTY = -5.0
 CLICHE_PENALTY_TOKENS = 6   # Penalise first N tokens of the obvious response
 
-# HuggingFace auth
+# HuggingFace auth + inference backend
 HF_TOKEN = os.getenv("HF_TOKEN", "")
+# "local" = Transformers on device; "hf_api" = Inference Providers (Spaces default)
+LLM_BACKEND = os.getenv("LLM_BACKEND", "local")
+# Qwen3.5-9B thinking-mode toggle requires Together; "auto" often 400s on extra_body
+HF_INFERENCE_PROVIDER = os.getenv(
+    "HF_INFERENCE_PROVIDER",
+    "together" if "Qwen3.5" in LLM_MODEL_ID else "auto",
+)
