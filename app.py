@@ -138,10 +138,9 @@ _warmup_error: str | None = None
 
 
 def _ensure_index():
-    if not Path(INDEX_PATH).exists():
-        raise FileNotFoundError(
-            f"Index not found at {INDEX_PATH}. Run `witgym-index` or bundle data/index.npz in the Space."
-        )
+    from witgym.retriever import load_index
+
+    load_index(INDEX_PATH)
 
 
 def _get_shared():

@@ -5,6 +5,7 @@ Returns analogous situations (same violation type), not similar words.
 """
 import json
 import os
+from pathlib import Path
 from typing import List
 from loguru import logger
 import numpy as np
@@ -26,6 +27,20 @@ def load_index(index_path: str = config.INDEX_PATH) -> dict:
         npz_fallback = path.removesuffix(".json") + ".npz"
         if os.path.exists(npz_fallback):
             path = npz_fallback
+
+    if not os.path.exists(path):
+        transcript_dir = Path(config.TRANSCRIPT_DIR)
+        if transcript_dir.is_dir() and any(transcript_dir.glob("*.txt")):
+            from witgym.indexer import build_index
+
+            build_path = path if path.endswith(".npz") else config.INDEX_PATH
+            logger.info(f"Index missing — building {build_path} from {transcript_dir}")
+            build_index(index_path=build_path)
+            path = build_path
+        else:
+            raise FileNotFoundError(
+                f"Index not found at {index_path} and no transcripts in {config.TRANSCRIPT_DIR}"
+            )
 
     if path.endswith(".npz"):
         archive = np.load(path, allow_pickle=True)

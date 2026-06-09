@@ -1,6 +1,5 @@
-# Local data (generated); ship compact index + transcripts for Spaces
+# Local index is generated; ship transcripts only (Space builds index on startup)
 data/*
-!data/index.npz
 !data/transcripts/
 !data/transcripts/**
 
