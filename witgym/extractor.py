@@ -35,6 +35,7 @@ Archetype selection guidance (avoid overusing self_delusion):
 - self_delusion: specifically a self-image story ("I'm fine / I'm great / I'm the best") contradicted by behavior/evidence in the same moment
 If unsure between self_delusion vs social_fail/anxiety_escalation, prefer the more specific one (social_fail/anxiety_escalation) unless there is an explicit self-image contradiction.
 For twist_potential: score high if the input has self-delusion, status gap, or absurd logic. Score low if it is a neutral factual statement with no tension.
+If the input is ONLY a greeting, social opener, or typo-greeting with no described situation, set twist_potential to 1 and subtext to "greeting only — no situational content". Do not invent comedy tension.
 For connector: look for a single word or short phrase that carries an expected meaning in context AND a second meaning that reframes the situation. Most inputs will have null. Return null unless a genuine dual-reading exists (e.g. "manage" can mean control people or barely cope; "balance" can mean financial or emotional equilibrium).
 Return ONLY the JSON. Nothing else."""
 

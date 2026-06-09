@@ -63,6 +63,7 @@ class WitGymResponse(BaseModel):
     retrieved_scenes: List[TranscriptScene]
     candidates: List[CandidateResponse]
     selected: str
+    route: str = "humour"  # "smalltalk" | "humour"
 
 
 # Fallback metadata when extraction fails
