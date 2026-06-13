@@ -28,6 +28,18 @@ def load_index(index_path: str = config.INDEX_PATH) -> dict:
         if os.path.exists(npz_fallback):
             path = npz_fallback
 
+    from witgym.hub_data import materialize_hub_transcripts
+
+    materialize_hub_transcripts()
+
+    if not os.path.exists(path) and config.WITGYM_DATA_REPO:
+        from witgym.hub_data import ensure_artifact
+
+        try:
+            path = str(ensure_artifact("index.npz"))
+        except FileNotFoundError:
+            pass
+
     if not os.path.exists(path):
         transcript_dir = Path(config.TRANSCRIPT_DIR)
         if transcript_dir.is_dir() and any(transcript_dir.glob("*.txt")):

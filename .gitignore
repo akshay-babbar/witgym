@@ -1,7 +1,9 @@
-# Local index is generated; ship transcripts only (Space builds index on startup)
+# Local index is generated; large transcripts live on HF dataset repo
 data/*
 !data/transcripts/
 !data/transcripts/**
+data/transcripts/office_generated.txt
+data/hub_cache/
 
 # Virtual environments
 .venv/
