@@ -12,13 +12,6 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Verify HF token
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          uvx hf auth whoami --token "$HF_TOKEN"
-          echo "Token is valid."
-
       - name: Push to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
