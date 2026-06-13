@@ -42,7 +42,7 @@ jobs:
           from huggingface_hub import list_repo_tree
 
           local = {
-              str(p).replace(os.sep, "/")
+              str(p.relative_to("deploy")).replace(os.sep, "/")
               for p in pathlib.Path("deploy").rglob("*")
               if p.is_file()
           }
@@ -54,13 +54,13 @@ jobs:
                   recursive=True,
                   token=os.environ["HF_TOKEN"],
               )
-              if f.path
+              if f.path and f.type == "file"
           }
           missing = sorted(local - remote)
           extra = sorted(remote - local)
           if missing or extra:
-              print("Local-only:", missing)
-              print("Remote-only:", extra)
+              print("On main but not Space:", missing)
+              print("On Space but not main:", extra)
               raise SystemExit("Space file tree does not match main export")
           print(f"Verified {len(local)} files match main")
           PY
