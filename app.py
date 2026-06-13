@@ -560,6 +560,100 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 .wg-cap-chev { font-size: 0.6rem; transition: transform .18s; display: inline-block; }
 .wg-capsule--open .wg-cap-chev { transform: rotate(90deg); }
 
+/* ── Shared shimmer + attention keyframes ────────────────────────────────── */
+/* Shimmer: light highlight sweeps L→R — signals "this surface has depth" */
+@keyframes wg-shimmer-slide {
+  0%   { transform: translateX(-160%); }
+  100% { transform: translateX(160%); }
+}
+/* Chevron bobs toward hidden content — pure motion affordance */
+@keyframes wg-chev-beckon {
+  0%,100% { transform: translateX(0); }
+  40%     { transform: translateX(6px); }
+}
+/* Border breathes with a warm glow — signals "this boundary is crossable" */
+@keyframes wg-capsule-glow {
+  0%,100% { border-color: var(--wg-border); box-shadow: none; }
+  50%     { border-color: rgba(245,197,24,0.7); box-shadow: 0 0 0 2.5px rgba(245,197,24,0.18); }
+}
+/* Chip pop-in: slight scale bounce then settles — signals "I'm interactive" */
+@keyframes wg-chip-pop {
+  0%   { transform: scale(0.88); opacity: 0.6; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+/* Chip shimmer: same sweep but stronger amber */
+@keyframes wg-chip-shimmer {
+  0%   { transform: translateX(-180%); }
+  100% { transform: translateX(180%); }
+}
+
+/* ── Capsule attention (border glow + head shimmer + chevron bob) ─────────── */
+.wg-capsule--new {
+  animation: wg-capsule-glow 1.2s ease-in-out 0.4s 3 both;
+}
+.wg-capsule--new .wg-capsule-head {
+  position: relative; overflow: hidden;
+}
+.wg-capsule--new .wg-capsule-head::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, transparent 15%, rgba(245,197,24,0.55) 50%, transparent 85%);
+  transform: translateX(-160%);
+  animation: wg-shimmer-slide 1.1s ease-in-out 0.7s 3 both;
+}
+.wg-capsule--new .wg-cap-chev {
+  animation: wg-chev-beckon 0.5s ease-in-out 0.3s 6 both;
+}
+/* Kill all animations once the user engages */
+.wg-capsule--new.wg-capsule--open,
+.wg-capsule--new.wg-capsule--open .wg-capsule-head::after,
+.wg-capsule--new.wg-capsule--open .wg-cap-chev { animation: none; }
+
+/* Light-mode capsule overrides */
+@keyframes wg-capsule-glow-light {
+  0%,100% { border-color: #e0d8cc; box-shadow: none; }
+  50%     { border-color: rgba(180,83,9,0.6); box-shadow: 0 0 0 2.5px rgba(180,83,9,0.14); }
+}
+#wg-practice .wg-capsule--new {
+  animation: wg-capsule-glow-light 1.2s ease-in-out 0.4s 3 both;
+}
+#wg-practice .wg-capsule--new .wg-capsule-head::after {
+  background: linear-gradient(90deg, transparent 15%, rgba(180,83,9,0.45) 50%, transparent 85%);
+}
+
+/* ── Chip attention: pop-in scale bounce + shimmer sweep ─────────────────── */
+.wg-chip-clickable {
+  position: relative; overflow: hidden;
+  animation: wg-chip-pop 0.45s cubic-bezier(.22,.68,0,1.4) both;
+}
+/* Stagger the three chips */
+.wg-chip-row .wg-chip-clickable:nth-child(1) { animation-delay: 0.05s; }
+.wg-chip-row .wg-chip-clickable:nth-child(2) { animation-delay: 0.18s; }
+.wg-chip-row .wg-chip-clickable:nth-child(3) { animation-delay: 0.31s; }
+/* Shimmer on each chip after its pop-in */
+.wg-chip-clickable::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(90deg, transparent 10%, rgba(255,255,255,0.55) 50%, transparent 90%);
+  transform: translateX(-180%);
+  animation: wg-chip-shimmer 0.9s ease-in-out 0.55s 2 both;
+}
+.wg-chip-row .wg-chip-clickable:nth-child(2)::after { animation-delay: 0.68s; }
+.wg-chip-row .wg-chip-clickable:nth-child(3)::after { animation-delay: 0.81s; }
+
+/* ── Coaching notes toggle shimmer ──────────────────────────────────────── */
+.wg-debug-toggle--new .wg-debug-toggle-label {
+  position: relative; overflow: hidden;
+}
+.wg-debug-toggle--new .wg-debug-toggle-label::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(90deg, transparent 15%, rgba(245,197,24,0.5) 50%, transparent 85%);
+  transform: translateX(-160%);
+  animation: wg-shimmer-slide 1.3s ease-in-out 0.2s 3 both;
+}
+#wg-practice .wg-debug-toggle--new .wg-debug-toggle-label::after {
+  background: linear-gradient(90deg, transparent 15%, rgba(180,83,9,0.38) 50%, transparent 85%);
+}
+
 /* ── Light-mode overrides for chips + capsules ──────────────────────────── */
 #wg-practice .wg-chip-cyan   { background: #ecfeff; color: #0e7490; border-color: #a5f3fc; }
 #wg-practice .wg-chip-purple { background: #f5f3ff; color: #7c3aed; border-color: #ddd6fe; }
