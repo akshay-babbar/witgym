@@ -1,7 +1,7 @@
 """Format WitGymResponse traces for Gradio — styled HTML transcript."""
 import html
 import json
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Optional
 from witgym.schemas import WitGymResponse
 from witgym.avatars import char_avatar_url
 
@@ -61,7 +61,12 @@ def thinking_turn_html(user_input: str) -> str:
     return (
         '<div class="wg-turn wg-turn--thinking">'
         f'<div class="wg-user"><span class="wg-label">You</span> {_esc(user_input)}</div>'
-        f'<div class="wg-thinking">{_THINKING_ICON}<span>Your humor coach is thinking…</span></div>'
+        f'<div class="wg-thinking">{_THINKING_ICON}'
+        '<span class="wg-step-cycle">'
+        '<span>reading the room…</span>'
+        '<span>finding precedent…</span>'
+        '<span>drafting candidates…</span>'
+        '</span></div>'
         '</div>'
     )
 
@@ -118,7 +123,18 @@ def _debug_panels_html(result: WitGymResponse) -> str:
     return "".join(parts)
 
 
-def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool = True) -> str:
+def _twist_meter_html(twist_potential: int) -> str:
+    pct = twist_potential * 10
+    return (
+        f'<div class="wg-twist-meter">'
+        f'<span class="wg-twist-label">COMEDY COMPLEXITY</span>'
+        f'<div class="wg-twist-bar"><div class="wg-twist-fill" style="width:{pct}%"></div></div>'
+        f'<span class="wg-twist-score">{twist_potential}/10</span>'
+        f'</div>'
+    )
+
+
+def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool = True, is_last: bool = False) -> str:
     parts = [
         '<div class="wg-turn">',
         f'<div class="wg-user"><span class="wg-label">You</span> {_esc(user_input)}</div>',
@@ -136,7 +152,25 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
     collapsed_cls = "" if show_debug else " wg-collapsed"
     chevron       = "▼" if show_debug else "▶"
 
+    # Alternate candidates (non-selected) for client-side "another take"
+    alts = [{"persona": c.persona, "text": c.text} for c in result.candidates if c.text != result.selected]
+    alts_json = html.escape(json.dumps(alts))
+
+    # Winning persona label — use pre-compression value stored in response
+    winning_persona = result.winning_persona
+    persona_label = f' · <em class="wg-persona-label">{_esc(winning_persona)}</em>' if winning_persona else ""
+
+    # Another take button (only if alternatives exist)
+    another_take_btn = (
+        '<span class="wg-another-take" onclick="wgAnotherTake(this)" title="Try another candidate">↻ another take</span>'
+        if alts else ""
+    )
+
+    # New-turn reveal class for animation
+    new_cls = " wg-coach-reply--new" if is_last else ""
+
     parts += [
+        _twist_meter_html(result.metadata.twist_potential),
         '<div class="wg-debug-toggle">',
         '<span class="wg-debug-toggle-line"></span>',
         f'<span class="wg-debug-toggle-label">Coaching notes <span class="wg-debug-chevron">{chevron}</span></span>',
@@ -145,8 +179,8 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
         f'<div class="wg-debug-body{collapsed_cls}">',
         _debug_panels_html(result),
         '</div>',
-        '<div class="wg-coach-reply">',
-        '<div class="wg-coach-reply-header">Your humor coach</div>',
+        f'<div class="wg-coach-reply{new_cls}" data-alts="{alts_json}" data-alt-idx="0">',
+        f'<div class="wg-coach-reply-header">Your humor coach{persona_label}{another_take_btn}</div>',
         f'<div class="wg-coach-reply-body">{_esc(result.selected)}</div>',
         '</div>',
         '<div class="wg-rule"></div></div>',
@@ -154,21 +188,9 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
     return "".join(parts)
 
 
-# JS for coaching-note toggle only.
-# wgOpenScene is defined once in _practice_header_html() (static, never re-rendered).
-_PAGE_JS = """<script>
-(function(){
-  document.querySelectorAll('.wg-debug-toggle').forEach(function(t){
-    if(t._wg)return;t._wg=true;
-    t.addEventListener('click',function(){
-      var b=t.nextElementSibling;
-      var ch=t.querySelector('.wg-debug-chevron');
-      var c=b.classList.toggle('wg-collapsed');
-      if(ch)ch.textContent=c?'▶':'▼';
-    });
-  });
-})();
-</script>"""
+# All JS is in _GLOBAL_JS (app.py, injected via head=) — scripts in gr.HTML value
+# are not executed by Gradio 6.x (set via innerHTML). See app.py _GLOBAL_JS.
+_PAGE_JS = ""
 
 
 def format_transcript_html(
@@ -187,15 +209,15 @@ def format_transcript_html(
         )
     else:
         recent = traces[-max_turns:]
-        blocks = [
+        body = "".join(
             format_trace_html(
                 r if isinstance(r, WitGymResponse) else WitGymResponse.model_validate(r),
                 user_input,
                 show_debug=show_debug,
+                is_last=(i == len(recent) - 1),
             )
-            for user_input, r in recent
-        ]
-        body = "".join(blocks) + append_html
+            for i, (user_input, r) in enumerate(recent)
+        ) + append_html
 
     return f'<div class="wg-transcript">{body}</div>{_PAGE_JS}'
 

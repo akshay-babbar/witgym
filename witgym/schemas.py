@@ -64,6 +64,7 @@ class WitGymResponse(BaseModel):
     candidates: List[CandidateResponse]
     selected: str
     route: str = "humour"  # "smalltalk" | "humour"
+    winning_persona: Optional[str] = None  # persona of the ranked winner (before compression)
 
 
 # Fallback metadata when extraction fails

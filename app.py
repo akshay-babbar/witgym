@@ -462,6 +462,100 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 .wg-cyan { color: #22d3ee; font-weight: 500; }
 .wg-bold { font-weight: 600; }
 
+/* ── Slide-in animation on new turns ───────────────────────────────────── */
+@keyframes wg-slide-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.wg-turn { animation: wg-slide-in 0.35s ease-out both; }
+
+/* ── Reveal animation on winning coach reply ────────────────────────────── */
+@keyframes wg-reply-reveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.wg-coach-reply--new .wg-coach-reply-body {
+  animation: wg-reply-reveal 0.6s ease-out 0.15s both;
+}
+
+/* Flash on "another take" swap */
+@keyframes wg-alt-flash {
+  0%,100% { opacity: 1; }
+  40%      { opacity: 0.3; }
+}
+.wg-coach-reply--alt .wg-coach-reply-body {
+  animation: wg-alt-flash 0.35s ease-out;
+}
+
+/* ── Twist potential meter ──────────────────────────────────────────────── */
+.wg-twist-meter {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin: 0.6rem 0 0.75rem;
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.72rem; letter-spacing: 0.12em;
+}
+.wg-twist-label { color: var(--wg-muted); white-space: nowrap; }
+.wg-twist-bar {
+  flex: 1; height: 4px; background: var(--wg-border); border-radius: 2px; overflow: hidden;
+}
+.wg-twist-fill {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(to right, var(--wg-green), var(--wg-yellow));
+  transition: width 0.8s ease-out;
+}
+.wg-twist-score { color: var(--wg-yellow); min-width: 2.5rem; text-align: right; }
+
+/* Light-mode overrides for meter */
+#wg-practice .wg-twist-bar { background: #e0d8cc; }
+#wg-practice .wg-twist-score { color: #b45309; }
+#wg-practice .wg-twist-label { color: #9e9288; }
+
+/* ── Persona label + another-take ──────────────────────────────────────── */
+.wg-persona-label {
+  font-style: italic; font-family: 'EB Garamond', serif;
+  font-size: 0.78rem; color: var(--wg-yellow); letter-spacing: 0;
+  font-weight: 400;
+}
+#wg-practice .wg-persona-label { color: #b45309; }
+
+.wg-another-take {
+  float: right; cursor: pointer; font-family: 'EB Garamond', serif;
+  font-size: 0.75rem; font-style: italic; letter-spacing: 0;
+  color: rgba(245,197,24,0.6);
+  transition: color .15s;
+  user-select: none;
+}
+.wg-another-take:hover { color: var(--wg-yellow); }
+#wg-practice .wg-another-take { color: #b4960a; }
+#wg-practice .wg-another-take:hover { color: #78350f; }
+
+/* ── Step-cycle loading messages ────────────────────────────────────────── */
+.wg-step-cycle {
+  position: relative; display: inline-block;
+  height: 1.3em; min-width: 170px; overflow: hidden;
+}
+.wg-step-cycle span {
+  position: absolute; left: 0; top: 0;
+  opacity: 0;
+  animation: wg-step-show 6s linear infinite;
+  white-space: nowrap;
+}
+.wg-step-cycle span:nth-child(2) { animation-delay: 2s; }
+.wg-step-cycle span:nth-child(3) { animation-delay: 4s; }
+@keyframes wg-step-show {
+  0%   { opacity: 0; transform: translateY(4px); }
+  6%   { opacity: 0.8; transform: translateY(0); }
+  28%  { opacity: 0.8; transform: translateY(0); }
+  34%  { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 0; }
+}
+
+/* ── Subtle stage spotlight on practice bg ──────────────────────────────── */
+#wg-practice::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse 70% 35% at 50% 0%, rgba(45,106,79,0.05) 0%, transparent 70%);
+}
+#wg-practice { position: relative; }
+
 /* ── Comic-style modal ──────────────────────────────────────────────────── */
 #wg-modal-overlay {
   position: fixed; inset: 0; z-index: 9999;
@@ -544,6 +638,75 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 # All three functions use a SINGLE modal (#wg-modal-overlay) at top DOM level
 # so it's never hidden by a parent column's display:none.
 _GLOBAL_JS = """
+/* Event delegation for debug toggle (dynamic elements) */
+document.addEventListener('click', function(e) {
+  var toggle = e.target.closest('.wg-debug-toggle');
+  if (!toggle) return;
+  var body = toggle.nextElementSibling;
+  if (!body) return;
+  var ch = toggle.querySelector('.wg-debug-chevron');
+  var collapsed = body.classList.toggle('wg-collapsed');
+  if (ch) ch.textContent = collapsed ? '▶' : '▼';
+});
+
+/* Another take — cycle through pre-computed candidates */
+window.wgAnotherTake = function(btn) {
+  var card = btn.closest('.wg-coach-reply');
+  if (!card) return;
+  try {
+    var alts = JSON.parse(card.dataset.alts || '[]');
+    if (!alts.length) return;
+    var idx = parseInt(card.dataset.altIdx || '0') % alts.length;
+    var alt = alts[idx];
+    var body = card.querySelector('.wg-coach-reply-body');
+    var lbl = card.querySelector('.wg-persona-label');
+    if (body) body.textContent = alt.text;
+    if (lbl) lbl.textContent = alt.persona;
+    card.dataset.altIdx = (idx + 1) % alts.length;
+    card.classList.add('wg-coach-reply--alt');
+    setTimeout(function(){ card.classList.remove('wg-coach-reply--alt'); }, 400);
+  } catch(e) {}
+};
+
+/* Sound effects — Web Audio API, no external files */
+window.wgPlayBell = function() {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine'; o.frequency.setValueAtTime(880, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.25);
+    g.gain.setValueAtTime(0.12, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+    o.start(); o.stop(ctx.currentTime + 0.7);
+  } catch(e) {}
+};
+window.wgPlayClack = function() {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var rate = ctx.sampleRate, len = Math.floor(rate * 0.04);
+    var buf = ctx.createBuffer(1, len, rate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.exp(-i/(rate*0.006));
+    var src = ctx.createBufferSource(), g = ctx.createGain();
+    src.buffer = buf; g.gain.value = 0.06;
+    src.connect(g); g.connect(ctx.destination); src.start();
+  } catch(e) {}
+};
+/* MutationObserver: play clack when a new coach reply is added */
+(function(){
+  var last = 0;
+  function observe() {
+    var t = document.querySelector('.wg-transcript');
+    if (!t) { setTimeout(observe, 600); return; }
+    new MutationObserver(function(){
+      var n = document.querySelectorAll('.wg-coach-reply').length;
+      if (n > last) { last = n; window.wgPlayClack && wgPlayClack(); }
+    }).observe(t, {childList:true, subtree:true});
+  }
+  observe();
+})();
+
 window.wgClose = function() {
   var o = document.getElementById('wg-modal-overlay');
   if (o) o.style.display = 'none';
@@ -856,7 +1019,7 @@ def build_ui():
             fn=lambda: (gr.update(visible=False), gr.update(visible=True)),
             outputs=[landing_col, practice_col],
             queue=False,
-            js="() => { document.body.classList.add('wg-light-mode'); return []; }",
+            js="() => { document.body.classList.add('wg-light-mode'); wgPlayBell && wgPlayBell(); return []; }",
         )
         submit_btn.click(
             fn=practice,
