@@ -3,7 +3,7 @@ import os
 import torch
 
 # LLM — set LLM_MODEL_ID in env / HF Space secrets to swap models (local + API)
-LLM_MODEL_ID = os.getenv("LLM_MODEL_ID", "Qwen/Qwen3.6-27B")
+LLM_MODEL_ID = os.getenv("LLM_MODEL_ID", "Qwen/Qwen3.5-27B")
 MODEL_ID = LLM_MODEL_ID  # backward compat for imports
 
 EMBED_MODEL_ID = "BAAI/bge-small-en-v1.5"
@@ -78,13 +78,27 @@ WITGYM_DATA_REPO = os.getenv(
 )
 # "local" = Transformers on device; "hf_api" = Inference Providers (Spaces default)
 LLM_BACKEND = os.getenv("LLM_BACKEND", "local")
-# Qwen3.5-9B thinking-mode toggle requires Together; "auto" often 400s on extra_body
-def _default_inference_provider() -> str:
+def _default_inference_providers() -> list[str]:
+    if "Qwen3.5" in LLM_MODEL_ID and "27B" in LLM_MODEL_ID:
+        return ["novita", "featherless-ai"]
     if "Qwen3.5" in LLM_MODEL_ID:
-        return "together"
+        return ["together", "featherless-ai"]
     if "Qwen3.6" in LLM_MODEL_ID:
-        return "featherless-ai"
-    return "auto"
+        return ["featherless-ai", "ovhcloud"]
+    return ["auto"]
 
 
-HF_INFERENCE_PROVIDER = os.getenv("HF_INFERENCE_PROVIDER", _default_inference_provider())
+HF_INFERENCE_PROVIDERS = [
+    p.strip()
+    for p in os.getenv(
+        "HF_INFERENCE_PROVIDERS",
+        ",".join(_default_inference_providers()),
+    ).split(",")
+    if p.strip()
+]
+HF_INFERENCE_PROVIDER = os.getenv(
+    "HF_INFERENCE_PROVIDER",
+    HF_INFERENCE_PROVIDERS[0] if HF_INFERENCE_PROVIDERS else "auto",
+)
+HF_API_TIMEOUT = float(os.getenv("HF_API_TIMEOUT", "120"))
+HF_API_MAX_RETRIES = int(os.getenv("HF_API_MAX_RETRIES", "3"))

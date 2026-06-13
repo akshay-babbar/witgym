@@ -126,10 +126,12 @@ class WitGymEngine:
     def respond_stream(self, user_input: str) -> Iterator[PipelineEvent]:
         """Incremental pipeline for Gradio streaming UI."""
         if self.conversation.coaching_state.get("awaiting"):
+            original = self.conversation.coaching_state.get("original_input", user_input)
             yield from self._run_wit_pipeline(
                 self._enriched_coaching_input(user_input),
                 route="coaching",
                 display_input=user_input,
+                coaching_context=(original, user_input),
                 include_explanation=True,
             )
             return
@@ -207,6 +209,7 @@ class WitGymEngine:
         route: str = "quick_wit",
         *,
         display_input: Optional[str] = None,
+        coaching_context: Optional[tuple[str, str]] = None,
         include_explanation: bool = False,
     ) -> Iterator[PipelineEvent]:
         """CBR-RAG pipeline shared by quick_wit and coaching Turn 2."""
@@ -215,7 +218,12 @@ class WitGymEngine:
         if self.conversation.needs_compression(self.tokenizer):
             self.conversation.compress(self.model, self.tokenizer)
 
-        metadata = extract_comedy_metadata(user_input, self.model, self.tokenizer)
+        metadata = extract_comedy_metadata(
+            user_input,
+            self.model,
+            self.tokenizer,
+            coaching_context=coaching_context,
+        )
         yield PipelineEvent(phase="metadata", metadata=metadata)
 
         if metadata.twist_potential < 4:

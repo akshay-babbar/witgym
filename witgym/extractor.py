@@ -1,9 +1,11 @@
 """Pass 1 — Extract ComedyMetadata from user input."""
 import json
 import re
+from typing import Optional
 from loguru import logger
 from witgym.schemas import ComedyMetadata, fallback_metadata
-from witgym.model import generate_text
+from witgym.model import generate_text, is_hf_transport_error
+from witgym.prompts import COACHING_EXTRACT_PROMPT
 
 EXTRACT_PROMPT = """\
 Analyse the following conversational input and return a JSON object.
@@ -40,12 +42,30 @@ For connector: look for a single word or short phrase that carries an expected m
 Return ONLY the JSON. Nothing else."""
 
 
-def extract_comedy_metadata(user_input: str, model, tokenizer) -> ComedyMetadata:
+def extract_comedy_metadata(
+    user_input: str,
+    model,
+    tokenizer,
+    *,
+    coaching_context: Optional[tuple[str, str]] = None,
+) -> ComedyMetadata:
     """Pass 1: extract comedy metadata. Retries once on parse failure."""
-    prompt = EXTRACT_PROMPT.format(user_input=user_input)
+    if coaching_context:
+        original, follow_up = coaching_context
+        prompt = COACHING_EXTRACT_PROMPT.format(original=original, follow_up=follow_up)
+        fallback_key = follow_up
+    else:
+        prompt = EXTRACT_PROMPT.format(user_input=user_input)
+        fallback_key = user_input
 
     for attempt in range(2):
-        raw = generate_text(prompt, model, tokenizer, config_type="extract")
+        try:
+            raw = generate_text(prompt, model, tokenizer, config_type="extract")
+        except Exception as e:
+            if is_hf_transport_error(e):
+                logger.warning(f"HF API extract failed ({e}); using fallback_metadata")
+                return fallback_metadata(fallback_key)
+            raise
         logger.debug(f"Extractor raw output (attempt {attempt + 1}):\n{raw}")
 
         # Strip any accidental markdown fences
@@ -56,7 +76,7 @@ def extract_comedy_metadata(user_input: str, model, tokenizer) -> ComedyMetadata
         if not match:
             logger.warning(f"No JSON found in extractor output (attempt {attempt + 1})")
             if attempt == 0:
-                prompt += f"\n\nYour previous response contained no valid JSON. Return ONLY the JSON object."
+                prompt += "\n\nYour previous response contained no valid JSON. Return ONLY the JSON object."
             continue
 
         try:
@@ -70,4 +90,4 @@ def extract_comedy_metadata(user_input: str, model, tokenizer) -> ComedyMetadata
                 prompt += f"\n\nParse error: {e}. Fix and return ONLY valid JSON."
 
     logger.error("Extractor failed twice. Using fallback metadata.")
-    return fallback_metadata(user_input)
+    return fallback_metadata(fallback_key)

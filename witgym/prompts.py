@@ -44,6 +44,30 @@ or what they actually did say.
 
 ONE question. Nothing else."""
 
+COACHING_EXTRACT_PROMPT = """\
+Analyse the SOCIAL SITUATION described below (not the coaching meta-request) and return a JSON object.
+
+ORIGINAL COACHING REQUEST: "{original}"
+USER FOLLOW-UP (what happened / what they want to learn): "{follow_up}"
+
+Return ONLY a JSON object with these exact fields (no explanation, no markdown, no code block):
+{{
+  "surface": "what was literally said in one sentence",
+  "subtext": "what the speaker actually means or feels",
+  "archetype": one of ["status_assertion", "self_delusion", "power_inversion", "anxiety_escalation", "social_fail", "misplaced_conf"],
+  "archetype_confidence": an integer from 1 to 10 (how confident you are in the archetype choice),
+  "tension_type": one of ["social_embarrass", "existential", "status_threat", "identity_expose", "logic_collapse"],
+  "power_dynamic": "who has power and who doesn't, one sentence",
+  "speaker_strategy": "one short phrase describing how the speaker is trying to be perceived (e.g. competent, unbothered, in-control), or null if unclear",
+  "obvious_response": "the most boring, expected response to this input",
+  "violation_distance": one of ["mild", "moderate", "sharp"],
+  "twist_potential": an integer from 1 to 10 rating how much hidden comedy tension is in this input (1=completely flat, 10=extremely rich setup for wit),
+  "connector": "the specific word or phrase in the input that could mean two different things simultaneously, or null if no such word exists"
+}}
+
+Focus on the awkward social moment in the follow-up. Ignore phrases like "teach me" or "how should I respond" — extract comedy structure from the situation itself.
+Return ONLY the JSON. Nothing else."""
+
 EXPLAIN_PROMPT = """\
 You just delivered this comedy line: "{joke}"
 

@@ -1,9 +1,12 @@
 """Model loading and ClichePenaltyProcessor."""
 import re
+import time
 import torch
 import gc
 from threading import Thread
 from typing import Iterator
+import httpx
+import httpcore
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -17,20 +20,38 @@ from witgym import config
 
 _model = None
 _tokenizer = None
-_inference_client = None
+_inference_clients: dict[str, object] = {}
 
 
-def _get_inference_client():
-    global _inference_client
-    if _inference_client is None:
+def _is_transport_error(exc: BaseException) -> bool:
+    if isinstance(exc, (httpx.RemoteProtocolError, httpx.ConnectError, httpcore.RemoteProtocolError)):
+        return True
+    cause = getattr(exc, "__cause__", None)
+    return cause is not None and _is_transport_error(cause)
+
+
+def _is_extra_body_rejection(exc: BaseException) -> bool:
+    if isinstance(exc, httpx.HTTPStatusError):
+        return 400 <= exc.response.status_code < 500
+    msg = str(exc).lower()
+    return "extra_body" in msg or "chat_template_kwargs" in msg or "enable_thinking" in msg
+
+
+def _reset_inference_client(provider: str) -> None:
+    _inference_clients.pop(provider, None)
+
+
+def _get_inference_client(provider: str):
+    if provider not in _inference_clients:
         from huggingface_hub import InferenceClient
 
-        _inference_client = InferenceClient(
+        _inference_clients[provider] = InferenceClient(
             model=config.LLM_MODEL_ID,
             token=config.HF_TOKEN or None,
-            provider=config.HF_INFERENCE_PROVIDER,
+            provider=provider,
+            timeout=config.HF_API_TIMEOUT,
         )
-    return _inference_client
+    return _inference_clients[provider]
 
 
 def load_model():
@@ -38,8 +59,9 @@ def load_model():
     global _model, _tokenizer
 
     if config.LLM_BACKEND == "hf_api":
+        providers = ",".join(config.HF_INFERENCE_PROVIDERS)
         logger.info(
-            f"HF API backend ({config.HF_INFERENCE_PROVIDER}) — "
+            f"HF API backend ({providers}) — "
             f"remote inference for {config.LLM_MODEL_ID}, no local weights or tokenizer"
         )
         return None, None
@@ -124,13 +146,16 @@ def _strip_thinking(text: str) -> str:
     return text.strip()
 
 
-def _hf_api_user_content(prompt: str) -> str:
+def _hf_api_user_content(prompt: str, config_type: str = "generate") -> str:
     """Disable Qwen thinking mode when provider rejects chat_template_kwargs."""
+    prefix = ""
+    if config_type in ("extract", "rank"):
+        prefix = "You are a JSON extractor. No reasoning. Output JSON only.\n"
     if "Qwen3.5" in config.LLM_MODEL_ID or "Qwen3.6" in config.LLM_MODEL_ID:
         stripped = prompt.lstrip()
         if not stripped.startswith("/no_think"):
-            return f"/no_think\n{prompt}"
-    return prompt
+            prompt = f"/no_think\n{prompt}"
+    return prefix + prompt
 
 
 def _extract_hf_message_text(message) -> str:
@@ -150,19 +175,69 @@ def _hf_api_extra_body() -> dict:
     return {}
 
 
-def _generate_via_hf_api(prompt: str, config_type: str) -> str:
-    """Route generation through Hugging Face Inference Providers."""
-    client = _get_inference_client()
-    messages = [{"role": "user", "content": _hf_api_user_content(prompt)}]
+def _hf_api_messages(prompt: str, config_type: str) -> list:
+    return [{"role": "user", "content": _hf_api_user_content(prompt, config_type)}]
+
+
+def _hf_chat_completion(messages: list, config_type: str, *, stream: bool = False):
+    """Try provider chain with transport retries and separate extra_body handling."""
     kwargs = _generation_kwargs(config_type)
     extra = _hf_api_extra_body()
-    try:
-        output = client.chat_completion(messages, **kwargs, extra_body=extra)
-    except Exception as e:
-        # Some providers reject chat_template_kwargs — retry without it
-        logger.warning(f"HF API extra_body rejected ({e}); retrying without thinking toggle")
-        output = client.chat_completion(messages, **kwargs)
+    last_exc: BaseException | None = None
 
+    for provider in config.HF_INFERENCE_PROVIDERS:
+        for attempt in range(config.HF_API_MAX_RETRIES):
+            client = _get_inference_client(provider)
+            use_extra = bool(extra)
+            try:
+                if stream:
+                    return client.chat_completion(
+                        messages, stream=True, **kwargs, **({"extra_body": extra} if use_extra else {})
+                    )
+                return client.chat_completion(
+                    messages, **kwargs, **({"extra_body": extra} if use_extra else {})
+                )
+            except Exception as e:
+                last_exc = e
+                if use_extra and _is_extra_body_rejection(e) and not _is_transport_error(e):
+                    logger.warning(
+                        f"HF API extra_body rejected by {provider} ({e}); retrying without thinking toggle"
+                    )
+                    try:
+                        if stream:
+                            return client.chat_completion(messages, stream=True, **kwargs)
+                        return client.chat_completion(messages, **kwargs)
+                    except Exception as e2:
+                        last_exc = e2
+                        e = e2
+
+                if _is_transport_error(e):
+                    _reset_inference_client(provider)
+                    backoff = 0.5 * (2 ** attempt)
+                    logger.warning(
+                        f"HF API transport error ({provider}, attempt {attempt + 1}): {e}; "
+                        f"retry in {backoff:.1f}s"
+                    )
+                    time.sleep(backoff)
+                    continue
+
+                logger.warning(f"HF API error ({provider}): {e}; trying next provider")
+                break
+
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("HF API chat_completion failed with no providers configured")
+
+
+def is_hf_transport_error(exc: BaseException) -> bool:
+    """Public helper for graceful degradation at pipeline boundaries."""
+    return _is_transport_error(exc)
+
+
+def _generate_via_hf_api(prompt: str, config_type: str) -> str:
+    """Route generation through Hugging Face Inference Providers."""
+    messages = _hf_api_messages(prompt, config_type)
+    output = _hf_chat_completion(messages, config_type, stream=False)
     raw = _extract_hf_message_text(output.choices[0].message)
     if not raw:
         logger.warning(f"HF API returned empty text (config_type={config_type})")
@@ -199,16 +274,8 @@ def _local_generation_kwargs(config_type: str) -> dict:
 
 
 def _stream_hf_api_tokens(prompt: str, config_type: str) -> Iterator[str]:
-    client = _get_inference_client()
-    messages = [{"role": "user", "content": _hf_api_user_content(prompt)}]
-    kwargs = _generation_kwargs(config_type)
-    extra = _hf_api_extra_body()
-    try:
-        stream = client.chat_completion(messages, stream=True, **kwargs, extra_body=extra)
-    except Exception as e:
-        logger.warning(f"HF API stream extra_body rejected ({e}); retrying without thinking toggle")
-        stream = client.chat_completion(messages, stream=True, **kwargs)
-
+    messages = _hf_api_messages(prompt, config_type)
+    stream = _hf_chat_completion(messages, config_type, stream=True)
     for chunk in stream:
         if not chunk.choices:
             continue
