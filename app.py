@@ -1,4 +1,4 @@
-"""WitGym Gradio demo — dark gym aesthetic matching design spec."""
+"""WitGym Gradio demo — dark gym landing, ivory practice screen."""
 import html
 import os
 import threading
@@ -22,29 +22,56 @@ from witgym import config
 INDEX_PATH = os.getenv("WITGYM_INDEX_PATH", config.INDEX_PATH)
 _FAVICON = Path(__file__).parent / "assets" / "favicon.png"
 
-# ── Character coaching panel data ────────────────────────────────────────────
-# (name, role, card-bg, skin, hair-color, hair-top-y, mouth-path)
-_CHARS = [
-    ("Michael",  "comedian",    "#5a1a0a", "#e8b090", "#3d1a08", 21, "M24 41 Q32 48 40 41"),
-    ("Dwight",   "contrarian",  "#2d3d1a", "#d4a574", "#2a1f0a", 19, "M24 41 L40 41"),
-    ("Jim",      "wit",         "#1a2d4a", "#e8c5a0", "#2a1a0a", 21, "M26 40 Q33 44 39 39"),
-    ("Pam",      "empath",      "#5a1a4a", "#e8b090", "#1a0a00", 17, "M24 41 Q32 48 40 41"),
-    ("Kevin",    "literalist",  "#3d1a5a", "#c47a3a", "#1a0a00", 20, "M24 41 L40 41"),
-    ("Andy",     "overclaimer", "#7a3010", "#e8c5a0", "#c8a020", 21, "M22 40 Q32 49 42 40"),
-    ("Stanley",  "cynic",       "#0f2d1a", "#7a4a2a", "#0a0a0a", 20, "M24 42 Q32 37 40 42"),
-    ("Angela",   "moralist",    "#2a2a0a", "#f0d0b0", "#c8c040", 21, "M25 42 L39 42"),
-    ("Ryan",     "hustler",     "#1f0a2d", "#d0906a", "#0a0a0a", 20, "M26 40 Q33 44 39 39"),
-    ("Kelly",    "enthusiast",  "#6a0a3a", "#c47a4a", "#0a0a0a", 20, "M22 40 Q32 49 42 40"),
-]
+# ── DiceBear Avataaars URLs — cartoon-style, free, no copyright ──────────────
+_DICEBEAR = "https://api.dicebear.com/9.x/avataaars/svg"
 
-# ── Mascot SVG (smiley with wide rectangular sunglasses) ─────────────────────
-_MASCOT_SVG = """<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="wg-mascot" width="110" height="110" aria-hidden="true">
-  <circle cx="50" cy="50" r="44" fill="#f0ebe0" stroke="#d4cfc0" stroke-width="1.5"/>
-  <rect x="7"  y="34" width="35" height="22" rx="6" fill="#1a3d2b"/>
-  <rect x="58" y="34" width="35" height="22" rx="6" fill="#1a3d2b"/>
-  <rect x="42" y="42" width="16" height="6"  rx="2" fill="#1a3d2b"/>
-  <path d="M34 68 Q50 80 66 68" stroke="#5c4a3a" stroke-width="3" fill="none" stroke-linecap="round"/>
-</svg>"""
+def _av(seed: str, **kw) -> str:
+    params = "&".join(f"{k}[]={v}" for k, v in kw.items())
+    return f"{_DICEBEAR}?seed={seed}&backgroundColor=transparent&{params}"
+
+# Character data: (name, role-label, card-bg, avatar-url, bio-title, bio-desc)
+CHARACTERS = [
+    ("Michael",  "comedian",    "#5a1a0a",
+     _av("MichaelScott",  top="shortHairShortFlat", topColor="brown",   clothingColor="black",  mouth="smile"),
+     "Regional Manager",
+     "Needs to be the funniest person in the room — always. Even at funerals."),
+    ("Dwight",   "contrarian",  "#2d3d1a",
+     _av("DwightSchrute", top="shortHairShortRound", topColor="brown",  accessories="round",    mouth="default"),
+     "Assistant (to the) Regional Manager",
+     "Treats every situation as a threat to be neutralised through superior preparation."),
+    ("Jim",      "wit",         "#1a2d4a",
+     _av("JimHalpert",    top="shortHairShortFlat", topColor="brown",   clothingColor="navy",   mouth="twinkle"),
+     "Sales Representative",
+     "Deflects chaos with a raised eyebrow and impeccable comedic timing."),
+    ("Pam",      "empath",      "#5a1a4a",
+     _av("PamBeesly",     top="longHairStraight",   topColor="brunette",clothingColor="pastelGreen", mouth="smile"),
+     "Receptionist → Office Administrator",
+     "Finds the kindest possible way to say the unsayable thing everyone else is thinking."),
+    ("Kevin",    "literalist",  "#3d1a5a",
+     _av("KevinMalone",   top="shortHairShortCurly",topColor="black",   clothingColor="gray",   mouth="eating"),
+     "Accountant",
+     "Cuts to the literal truth everyone else is too sophisticated to say out loud."),
+    ("Andy",     "overclaimer", "#7a3010",
+     _av("AndyBernard",   top="shortHairShortFlat", topColor="blonde",  clothingColor="red",    mouth="smile"),
+     "Sales Representative",
+     "Overclaims, overshares, and somehow — through sheer confidence — lands it."),
+    ("Stanley",  "cynic",       "#0f2d1a",
+     _av("StanleyHudson", top="shortHairShortFlat", topColor="black",   skinColor="darkBrown",  mouth="sad"),
+     "Sales Representative",
+     "Has seen it all. Cares about essentially none of it. Will now return to his crossword."),
+    ("Angela",   "moralist",    "#2a2a0a",
+     _av("AngelaMartin",  top="longHairBun",         topColor="blonde",  clothingColor="black",  mouth="concerned"),
+     "Head of Accounting",
+     "Holds the line on decorum, propriety and cats while everything collapses around her."),
+    ("Ryan",     "hustler",     "#1f0a2d",
+     _av("RyanHoward",    top="shortHairShortRound", topColor="black",   facialHair="beardLight",mouth="default"),
+     "Temp → VP → Temp → Temp",
+     "Dresses up insecurity as strategy. The hustle is the product."),
+    ("Kelly",    "enthusiast",  "#6a0a3a",
+     _av("KellyKapoor",   top="longHairCurvy",       topColor="black",   skinColor="brown",      mouth="smile"),
+     "Customer Service Representative",
+     "Turns raw enthusiasm into an overwhelming and surprisingly effective force of nature."),
+]
 
 STARTERS = [
     ("Status",         "I just got promoted to manager and I have no idea what I'm doing."),
@@ -60,12 +87,20 @@ STARTERS = [
 TRANSCRIPT_MIN_HEIGHT = 440
 TRANSCRIPT_MAX_HEIGHT = 580
 
+# ── Mascot SVG ────────────────────────────────────────────────────────────────
+_MASCOT = """<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="wg-mascot" width="108" height="108" aria-hidden="true">
+  <circle cx="50" cy="50" r="44" fill="#f0ebe0" stroke="#d4cfc0" stroke-width="1.5"/>
+  <rect x="7"  y="34" width="35" height="22" rx="6" fill="#1a3d2b"/>
+  <rect x="58" y="34" width="35" height="22" rx="6" fill="#1a3d2b"/>
+  <rect x="42" y="42" width="16" height="6"  rx="2" fill="#1a3d2b"/>
+  <path d="M34 68 Q50 80 66 68" stroke="#5c4a3a" stroke-width="3" fill="none" stroke-linecap="round"/>
+</svg>"""
+
 APP_CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
 
-/* ── Global dark base ──────────────────────────────────────────── */
+/* ── Global dark base ──────────────────────────────────────────────────── */
 body, .gradio-container, .main, footer { background: #141414 !important; }
-.gradio-container { min-height: 100vh; }
 
 :root {
   --wg-bg:     #141414;
@@ -76,17 +111,16 @@ body, .gradio-container, .main, footer { background: #141414 !important; }
   --wg-green:  #2d6a4f;
   --wg-white:  #f0f0f0;
   --wg-muted:  #777;
-  --wg-dim:    #444;
   --wg-r:      10px;
 }
 
-/* ── Landing / Hero ────────────────────────────────────────────── */
+/* ── Landing / Hero (exactly one viewport, no scroll) ──────────────────── */
 .wg-hero {
-  position: relative; min-height: 100svh;
+  position: relative; height: 100svh; min-height: 560px;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   background: var(--wg-bg); overflow: hidden;
-  padding: 2rem 1rem 3rem; text-align: center;
+  padding: 2rem 1rem; text-align: center;
 }
 .wg-hero::before {
   content: ''; position: absolute; inset: 0;
@@ -94,7 +128,7 @@ body, .gradio-container, .main, footer { background: #141414 !important; }
   background-size: 24px 24px; pointer-events: none;
 }
 
-/* REC indicator */
+/* ● REC indicator */
 .wg-rec {
   position: absolute; top: 1.5rem; right: 1.75rem;
   display: flex; align-items: center; gap: 0.4rem;
@@ -106,37 +140,34 @@ body, .gradio-container, .main, footer { background: #141414 !important; }
   width: 8px; height: 8px; border-radius: 50%;
   background: #e53e3e; animation: wg-pulse 1.5s ease-in-out infinite;
 }
-@keyframes wg-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+@keyframes wg-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
 /* Kicker */
 .wg-kicker {
-  font-family: 'EB Garamond', Georgia, serif;
-  font-style: italic; font-size: 0.8rem;
-  letter-spacing: 0.22em; color: var(--wg-yellow);
-  text-transform: uppercase; margin-bottom: 1.1rem; z-index: 1;
+  font-family: 'EB Garamond', Georgia, serif; font-style: italic;
+  font-size: 0.78rem; letter-spacing: 0.22em;
+  color: var(--wg-yellow); text-transform: uppercase;
+  margin-bottom: 1rem; z-index: 1;
 }
 
 /* Mascot */
-.wg-mascot { margin-bottom: 0.6rem; z-index: 1;
+.wg-mascot { margin-bottom: 0.5rem; z-index: 1;
   filter: drop-shadow(0 4px 20px rgba(45,106,79,0.3)); }
 
 /* WIT / GYM wordmark */
-.wg-wordmark {
-  display: flex; flex-direction: column;
-  align-items: center; line-height: 0.88;
-  margin-bottom: 1rem; z-index: 1;
-}
+.wg-wordmark { display: flex; flex-direction: column; align-items: center;
+  line-height: 0.88; margin-bottom: 0.9rem; z-index: 1; }
 .wg-wordmark-wit, .wg-wordmark-gym {
   font-family: 'Bebas Neue', Impact, 'Arial Black', sans-serif;
-  font-size: clamp(5.5rem, 20vw, 10rem); letter-spacing: 0.03em;
+  font-size: clamp(4.5rem, 18vw, 9rem); letter-spacing: 0.03em;
 }
 .wg-wordmark-wit { color: var(--wg-white); }
 .wg-wordmark-gym { color: var(--wg-yellow); }
 
 .wg-hero-tagline {
   font-family: 'EB Garamond', Georgia, serif; font-style: italic;
-  font-size: 1.05rem; color: rgba(240,240,240,0.7);
-  margin-bottom: 2rem; z-index: 1;
+  font-size: 1rem; color: rgba(240,240,240,0.7);
+  margin-bottom: 1.75rem; z-index: 1;
 }
 
 /* START TRAINING button */
@@ -146,94 +177,143 @@ body, .gradio-container, .main, footer { background: #141414 !important; }
   font-size: 1.2rem !important; letter-spacing: 0.22em !important;
   background: var(--wg-green) !important; color: #fff !important;
   border: none !important; border-radius: 50px !important;
-  padding: 0.8rem 3.5rem !important; min-width: 220px;
+  padding: 0.75rem 3.25rem !important;
   transition: background .2s, transform .15s;
 }
-#wg-start-btn button:hover {
-  background: #235a40 !important; transform: translateY(-2px);
-}
+#wg-start-btn button:hover { background: #235a40 !important; transform: translateY(-2px); }
 
 .wg-start-hint {
-  font-size: 0.75rem; color: var(--wg-muted);
-  margin-top: 0.65rem; font-style: italic; z-index: 1;
+  font-size: 0.72rem; color: var(--wg-muted); margin-top: 0.55rem;
+  font-style: italic; z-index: 1;
 }
 
-/* ── Coaching panel ────────────────────────────────────────────── */
+/* Glassy green bouncing scroll arrow */
+.wg-scroll-arrow {
+  position: absolute; bottom: 1.75rem; left: 50%; transform: translateX(-50%);
+  width: 40px; height: 40px; border-radius: 50%;
+  background: linear-gradient(135deg, #2d6a4f 0%, #4ade80 100%);
+  box-shadow: 0 0 18px rgba(74,222,128,0.45), inset 0 1px 0 rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 2; border: none;
+  animation: wg-bounce 1.9s ease-in-out infinite;
+  font-size: 1rem; color: #fff; text-decoration: none;
+  backdrop-filter: blur(4px);
+}
+@keyframes wg-bounce {
+  0%,100% { transform: translateX(-50%) translateY(0);   box-shadow: 0 0 18px rgba(74,222,128,0.45); }
+  50%      { transform: translateX(-50%) translateY(9px); box-shadow: 0 0 28px rgba(74,222,128,0.65); }
+}
+
+/* ── Coaching panel ─────────────────────────────────────────────────────── */
 .wg-coach-panel {
   width: 100%; padding: 2rem 1rem 2.5rem;
-  background: var(--wg-bg); border-top: 1px solid var(--wg-border);
+  background: var(--wg-bg); border-top: 1px solid #2a2a2a;
 }
 .wg-coach-divider {
   display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;
 }
-.wg-coach-div-line { flex: 1; height: 1px; background: var(--wg-dim); }
+.wg-coach-div-line { flex: 1; height: 1px; background: #3a3a3a; }
 .wg-coach-div-text {
   font-family: 'Bebas Neue', Impact, sans-serif;
-  font-size: 0.85rem; letter-spacing: 0.3em;
-  color: var(--wg-yellow); white-space: nowrap;
+  font-size: 0.82rem; letter-spacing: 0.3em; color: var(--wg-yellow); white-space: nowrap;
 }
 .wg-char-grid {
   display: flex; flex-wrap: wrap; justify-content: center;
-  gap: 0.65rem; max-width: 880px; margin: 0 auto;
+  gap: 0.65rem; max-width: 900px; margin: 0 auto;
 }
 .wg-char-card {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 0.35rem; background: var(--wg-surf2);
-  border-radius: var(--wg-r); padding: 0.6rem 0.4rem; width: 76px;
+  display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+  background: var(--wg-surf2); border-radius: var(--wg-r);
+  padding: 0.65rem 0.4rem 0.55rem; width: 82px;
   border: 1px solid var(--wg-border);
-  transition: border-color .15s, transform .15s;
+  cursor: pointer; transition: border-color .15s, transform .15s, box-shadow .15s;
 }
-.wg-char-card:hover { border-color: var(--wg-yellow); transform: translateY(-3px); }
+.wg-char-card:hover {
+  border-color: var(--wg-yellow); transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(245,197,24,0.15);
+}
+.wg-char-card img { width: 58px; height: 58px; border-radius: 8px; background: transparent; }
 .wg-char-name {
-  font-family: 'Bebas Neue', sans-serif; font-size: 0.75rem;
-  letter-spacing: 0.05em; color: var(--wg-white); text-align: center;
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.73rem;
+  letter-spacing: 0.06em; color: var(--wg-white); text-align: center;
 }
 .wg-char-role {
   font-family: 'EB Garamond', serif; font-style: italic;
   font-size: 0.58rem; color: var(--wg-muted); text-align: center;
 }
 
-/* ── Practice screen header (compact) ─────────────────────────── */
+/* ── Practice screen header (compact) ──────────────────────────────────── */
 .wg-practice-bar {
   display: flex; align-items: center; gap: 0.75rem;
-  padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--wg-border);
-  background: var(--wg-bg); position: sticky; top: 0; z-index: 10;
+  padding: 0.75rem 1.25rem; border-bottom: 1px solid #d8d0c4;
+  background: #faf9f6;
 }
 .wg-practice-logo {
   font-family: 'Bebas Neue', Impact, sans-serif;
-  font-size: 1.6rem; letter-spacing: 0.08em; color: var(--wg-white); line-height: 1;
+  font-size: 1.5rem; letter-spacing: 0.1em; color: #3d3429; line-height: 1;
 }
-.wg-practice-logo span { color: var(--wg-yellow); }
+.wg-practice-logo span { color: var(--wg-green); }
 .wg-practice-sub {
   font-family: 'EB Garamond', Georgia, serif; font-style: italic;
-  font-size: 0.8rem; color: var(--wg-muted);
+  font-size: 0.8rem; color: #9e9288;
 }
 
-/* ── Main layout ───────────────────────────────────────────────── */
+/* ── Practice screen: ivory/light override ──────────────────────────────── */
+#wg-practice { background: #fffff8 !important; }
+#wg-practice #wg-chat-shell {
+  background: #faf9f6 !important; border-color: #e0d8cc !important;
+}
+#wg-practice .wg-transcript { color: #2a2118; }
+#wg-practice .wg-user { color: #2d6a4f; }
+#wg-practice .wg-thinking {
+  background: #f5f2eb; border-color: rgba(200,190,175,0.5); color: #6b6258;
+}
+#wg-practice .wg-coach-reply {
+  background: #f0fdf4; border-color: #4ade80; border-left-color: #2d6a4f;
+}
+#wg-practice .wg-coach-reply-header { color: #2d6a4f; }
+#wg-practice .wg-coach-reply-body   { color: #14532d; }
+#wg-practice .wg-panel-yellow { background: #fffbeb; border-color: #fbbf24; color: #78350f; }
+#wg-practice .wg-panel-yellow .wg-panel-title { color: #b45309; }
+#wg-practice .wg-panel-blue   { background: #eff6ff; border-color: #60a5fa; color: #1e3a5f; }
+#wg-practice .wg-panel-blue   .wg-panel-title { color: #2563eb; }
+#wg-practice .wg-panel-green  { background: #f0fdf4; border-color: #4ade80; color: #14532d; }
+#wg-practice .wg-panel-green  .wg-panel-title { color: #16a34a; }
+#wg-practice .wg-panel-dim    { background: #f5f5f4; border-color: #d6d3d1; color: #78716c; }
+#wg-practice .wg-dim   { color: #9e9288; }
+#wg-practice .wg-cyan  { color: #0891b2; }
+#wg-practice .wg-dim-italic { color: #9e9288; font-style: italic; }
+#wg-practice .wg-debug-toggle-line   { background: #e0d8cc; }
+#wg-practice .wg-debug-toggle-label {
+  border-color: #e0d8cc; background: #f5f2eb; color: #9e9288;
+}
+#wg-practice .wg-debug-toggle-label:hover { color: #6b6258; }
+#wg-practice .wg-rule { border-color: #e0d8cc; }
+#wg-practice .wg-empty { color: #9e9288; }
+#wg-practice #wg-sidebar {
+  background: #faf9f6 !important; border-color: #e0d8cc !important;
+}
+#wg-practice .wg-sidebar-label { color: #9e9288; }
+#wg-practice .wg-starter-btn button {
+  background: #fff !important; border-color: #e0d8cc !important;
+  color: #3d3429 !important;
+}
+#wg-practice .wg-starter-btn button:hover {
+  border-color: var(--wg-green) !important; background: #f0fdf4 !important;
+}
+#wg-practice .gradio-container textarea,
+#wg-practice .gradio-container input[type="text"] {
+  background: #fff !important; color: #2a2118 !important; border-color: #e0d8cc !important;
+}
+#wg-practice .gradio-container textarea::placeholder,
+#wg-practice .gradio-container input[type="text"]::placeholder { color: #9e9288 !important; }
+#wg-practice .gradio-container button.secondary {
+  background: #f5f2eb !important; border-color: #e0d8cc !important; color: #3d3429 !important;
+}
+#wg-practice .gradio-container label span { color: #6b6258 !important; }
+
+/* Main layout */
 #witgym-main { max-width: 1200px; margin: 0 auto; padding: 0.75rem 0.5rem 1rem; }
-
-/* Chat shell */
-#wg-chat-shell {
-  background: var(--wg-surf) !important;
-  border: 1px solid var(--wg-border) !important;
-  border-radius: var(--wg-r) !important; overflow: hidden;
-}
-
-/* Inputs */
-.gradio-container textarea,
-.gradio-container input[type="text"] {
-  background: #1a1a1a !important; color: var(--wg-white) !important;
-  border-color: var(--wg-border) !important;
-}
-.gradio-container textarea::placeholder,
-.gradio-container input[type="text"]::placeholder { color: var(--wg-muted) !important; }
-
-/* Secondary buttons */
-.gradio-container button.secondary {
-  background: var(--wg-surf2) !important; border-color: var(--wg-border) !important;
-  color: rgba(240,240,240,.85) !important;
-}
-.gradio-container button.secondary:hover { border-color: var(--wg-yellow) !important; }
 
 /* Submit button */
 #wg-submit-btn button {
@@ -250,34 +330,35 @@ body, .gradio-container, .main, footer { background: #141414 !important; }
   border-radius: var(--wg-r) !important; padding: 0.85rem !important;
 }
 .wg-sidebar-label {
-  font-family: 'Bebas Neue', sans-serif; font-size: 0.9rem;
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.88rem;
   letter-spacing: 0.15em; color: var(--wg-muted); margin-bottom: 0.4rem;
 }
-
-/* Starter buttons */
 .wg-starter-btn button {
   width: 100%; text-align: left; white-space: normal;
-  height: auto !important; min-height: 2.1rem;
-  line-height: 1.3; padding: 0.38rem 0.55rem !important;
+  height: auto !important; min-height: 2.1rem; line-height: 1.3;
+  padding: 0.38rem 0.55rem !important;
   font-size: 0.82rem !important; font-family: 'EB Garamond', serif !important;
   border-radius: 7px !important;
   background: var(--wg-surf2) !important; border: 1px solid var(--wg-border) !important;
-  color: rgba(240,240,240,.8) !important; transition: border-color .15s, background .15s;
+  color: rgba(240,240,240,.82) !important; transition: border-color .15s;
 }
-.wg-starter-btn button:hover {
-  border-color: var(--wg-yellow) !important; background: #1a1500 !important;
+.wg-starter-btn button:hover { border-color: var(--wg-yellow) !important; }
+
+/* Chat shell */
+#wg-chat-shell {
+  background: var(--wg-surf) !important; border: 1px solid var(--wg-border) !important;
+  border-radius: var(--wg-r) !important; overflow: hidden;
 }
 
-/* ── Transcript ────────────────────────────────────────────────── */
+/* Transcript (dark default, overridden in #wg-practice) */
 .wg-transcript { font-size: 16px; line-height: 1.65; color: var(--wg-white); }
 .wg-empty {
   color: var(--wg-muted); font-style: italic; font-family: 'EB Garamond', serif;
   padding: 2.5rem 1.5rem; text-align: center;
   display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
 }
-.wg-empty-icon { font-size: 2rem; opacity: 0.45; }
+.wg-empty-icon { font-size: 2rem; opacity: 0.4; }
 .wg-empty-text { max-width: 280px; line-height: 1.55; }
-
 .wg-turn { margin-bottom: 1.75rem; }
 .wg-user { color: #4ade80; font-weight: 700; margin-bottom: 0.65rem; font-size: 17px; }
 .wg-label { font-weight: 700; margin-right: 0.3rem; }
@@ -298,7 +379,7 @@ body, .gradio-container, .main, footer { background: #141414 !important; }
   border-left: 3px solid var(--wg-yellow); border-radius: var(--wg-r);
 }
 .wg-coach-reply-header {
-  font-family: 'Bebas Neue', sans-serif; font-size: 0.82rem;
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.8rem;
   letter-spacing: 0.15em; color: var(--wg-yellow); margin-bottom: 0.4rem;
 }
 .wg-coach-reply-body {
@@ -339,6 +420,8 @@ body, .gradio-container, .main, footer { background: #141414 !important; }
 .wg-panel-green  { background: #041409; border-color: #145228; color: #86efac; }
 .wg-panel-green  .wg-panel-title { color: #4ade80; }
 .wg-panel-dim    { background: #111; border-color: var(--wg-border); color: var(--wg-muted); }
+.wg-clickable    { cursor: pointer; transition: opacity .15s, transform .1s; }
+.wg-clickable:hover { opacity: 0.85; transform: scale(1.01); }
 .wg-meta { border-collapse: collapse; width: 100%; }
 .wg-meta td { padding: 0.1rem 0.5rem 0.1rem 0; vertical-align: top; }
 .wg-rule { border-top: 1px solid var(--wg-border); margin: 0.75rem 0; }
@@ -347,67 +430,109 @@ body, .gradio-container, .main, footer { background: #141414 !important; }
 .wg-cyan { color: #22d3ee; font-weight: 500; }
 .wg-bold { font-weight: 600; }
 
-/* Checkbox label */
-.gradio-container label span { color: var(--wg-muted) !important; font-size: 0.82rem !important; }
+/* ── Comic-style modal ──────────────────────────────────────────────────── */
+#wg-modal-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(5px);
+  display: none; align-items: center; justify-content: center; padding: 1rem;
+}
+#wg-modal {
+  background: #fffff8;
+  background-image: radial-gradient(rgba(0,0,0,0.04) 1px, transparent 1px);
+  background-size: 20px 20px;
+  border-radius: 18px; max-width: 680px; width: 100%;
+  padding: 1.75rem 1.75rem 1.5rem; position: relative;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.45), 0 0 0 2px rgba(0,0,0,0.08);
+  font-family: 'EB Garamond', Georgia, serif;
+  max-height: 90vh; overflow-y: auto;
+}
+.wg-modal-x {
+  position: absolute; top: 1rem; right: 1rem;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #1a1a1a; color: #fff; border: none;
+  font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.wg-modal-x:hover { background: #333; }
+.wg-pop-show {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1rem;
+  letter-spacing: 0.2em; color: #2d6a4f; margin-bottom: 1rem;
+  border-bottom: 2px solid #e0d8cc; padding-bottom: 0.5rem;
+}
+.wg-pop-row { display: flex; gap: 1.25rem; margin-bottom: 1rem; align-items: flex-start; }
+.wg-pop-char { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; flex-shrink: 0; }
+.wg-pop-avatar { width: 110px; height: 110px; border-radius: 12px; background: #f5f0e6; }
+.wg-pop-name {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1rem;
+  letter-spacing: 0.08em; color: #2a2118; text-align: center;
+}
+.wg-pop-title {
+  font-size: 0.72rem; color: #9e9288; text-align: center; font-style: italic;
+  max-width: 110px; line-height: 1.3;
+}
+.wg-pop-right { flex: 1; display: flex; flex-direction: column; gap: 0.65rem; }
+.wg-pop-setup {
+  font-style: italic; color: #6b6258; font-size: 0.95rem; line-height: 1.5;
+}
+.wg-pop-bubble {
+  background: #fff; border: 2.5px solid #1a1a1a; border-radius: 14px;
+  padding: 0.85rem 1rem;
+  font-family: 'Bebas Neue', Impact, sans-serif;
+  font-size: 1.15rem; line-height: 1.3; letter-spacing: 0.02em; color: #1a1a1a;
+  position: relative;
+}
+.wg-pop-bubble::before {
+  content: ''; position: absolute; left: -14px; top: 50%; transform: translateY(-50%);
+  border: 7px solid transparent; border-right-color: #1a1a1a;
+}
+.wg-pop-bubble::after {
+  content: ''; position: absolute; left: -10px; top: 50%; transform: translateY(-50%);
+  border: 6px solid transparent; border-right-color: #fff;
+}
+.wg-pop-why {
+  background: #eff6ff; border: 1px solid #60a5fa;
+  border-radius: 10px; padding: 0.75rem 1rem; margin-top: 0.25rem;
+}
+.wg-pop-why-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.82rem;
+  letter-spacing: 0.12em; color: #2563eb; margin-bottom: 0.35rem;
+}
+.wg-pop-why-body { font-size: 0.95rem; color: #1e3a5f; line-height: 1.55; }
+/* Bio modal (character card click — no scene context) */
+.wg-pop-bio {
+  font-size: 1.05rem; color: #3d3429; line-height: 1.6; font-style: italic;
+  background: #f5f0e6; border-left: 3px solid #2d6a4f;
+  padding: 0.75rem 1rem; border-radius: 0 10px 10px 0;
+}
 """
 
-# ── HTML generators ───────────────────────────────────────────────────────────
-
-def _coaching_panel_html() -> str:
-    cards = []
-    for name, role, bg, skin, hair, hair_y, mouth in _CHARS:
-        ellipse_ry = max(3, 36 - hair_y + 3)
-        face = (
-            f'<circle cx="32" cy="36" r="16" fill="{skin}"/>'
-            f'<ellipse cx="32" cy="{hair_y}" rx="14" ry="{ellipse_ry}" fill="{hair}"/>'
-            '<circle cx="27" cy="33" r="2" fill="#111"/>'
-            '<circle cx="37" cy="33" r="2" fill="#111"/>'
-            f'<path d="{mouth}" stroke="#2a2a2a" stroke-width="1.8" fill="none" stroke-linecap="round"/>'
-        )
-        cards.append(
-            f'<div class="wg-char-card">'
-            f'<svg viewBox="0 0 64 58" xmlns="http://www.w3.org/2000/svg" width="58" height="52">'
-            f'<rect width="64" height="58" rx="8" fill="{bg}"/>{face}'
-            f'</svg>'
-            f'<span class="wg-char-name">{name}</span>'
-            f'<span class="wg-char-role">{role}</span>'
-            f'</div>'
-        )
-    return (
-        '<div class="wg-coach-panel">'
-        '<div class="wg-coach-divider">'
-        '<span class="wg-coach-div-line"></span>'
-        '<span class="wg-coach-div-text">— COACHING PANEL —</span>'
-        '<span class="wg-coach-div-line"></span>'
-        '</div>'
-        f'<div class="wg-char-grid">{"".join(cards)}</div>'
-        '</div>'
-    )
-
-
-def _landing_html() -> str:
-    return (
-        '<div class="wg-hero">'
-        '<div class="wg-rec"><span class="wg-rec-dot"></span>REC</div>'
-        '<div class="wg-kicker">CBR-RAG Comedy Coaching Engine</div>'
-        f'{_MASCOT_SVG}'
-        '<div class="wg-wordmark">'
-        '<div class="wg-wordmark-wit">WIT</div>'
-        '<div class="wg-wordmark-gym">GYM</div>'
-        '</div>'
-        '<p class="wg-hero-tagline">Coach your comedy instincts — one situation at a time.</p>'
-        '</div>'
-    )
-
-
-def _practice_header_html() -> str:
-    return (
-        '<div class="wg-practice-bar">'
-        '<div class="wg-practice-logo">WIT<span>GYM</span></div>'
-        '<div class="wg-practice-sub">CBR-RAG Comedy Engine</div>'
-        '</div>'
-    )
-
+# ── Character card popup JS (coaching panel) ──────────────────────────────────
+_CHAR_MODAL_JS = """
+<script>
+(function(){
+  function wgClose(){document.getElementById('wg-modal-overlay').style.display='none';}
+  function wgOpenBio(name,title,desc,avatarUrl){
+    var b=document.getElementById('wg-modal-body');
+    b.innerHTML='<div class="wg-pop-show">THE COACHING PANEL</div>'
+      +'<div class="wg-pop-row">'
+      +'<div class="wg-pop-char">'
+      +'<img class="wg-pop-avatar" src="'+avatarUrl+'"/>'
+      +'<div class="wg-pop-name">'+name+'</div>'
+      +'<div class="wg-pop-title">'+title+'</div>'
+      +'</div>'
+      +'<div class="wg-pop-right">'
+      +'<div class="wg-pop-bio">'+desc+'</div>'
+      +'</div></div>';
+    document.getElementById('wg-modal-overlay').style.display='flex';
+  }
+  window.wgClose=wgClose;
+  window.wgOpenBio=wgOpenBio;
+  document.addEventListener('click',function(e){
+    if(e.target===document.getElementById('wg-modal-overlay')) wgClose();
+  });
+})();
+</script>
+"""
 
 # ── App state & engine ────────────────────────────────────────────────────────
 
@@ -449,14 +574,78 @@ def _new_session():
     return {"conversation": ConversationManager(), "traces": []}
 
 
-def _err_html(msg: str) -> str:
-    return f'<div class="wg-transcript"><div class="wg-empty"><div class="wg-empty-icon">⚠️</div><div class="wg-empty-text">{html.escape(msg)}</div></div></div>'
-
-
 def _on_page_load():
     if _warmup_error:
-        return _err_html(f"Startup error: {_warmup_error}")
-    return format_transcript_html([])
+        return (
+            '<div class="wg-transcript"><div class="wg-empty">'
+            f'<div class="wg-empty-icon">⚠️</div><div class="wg-empty-text">{html.escape(_warmup_error)}</div>'
+            '</div></div>'
+        )
+    return format_transcript_html([], show_debug=True)
+
+
+# ── HTML generators ───────────────────────────────────────────────────────────
+
+def _coaching_panel_html() -> str:
+    cards = []
+    for name, role, bg, avatar_url, bio_title, bio_desc in CHARACTERS:
+        import json
+        onclick = (
+            f"wgOpenBio({json.dumps(name)},{json.dumps(bio_title)},{json.dumps(bio_desc)},{json.dumps(avatar_url)})"
+        )
+        cards.append(
+            f'<div class="wg-char-card" onclick="{html.escape(onclick)}" title="{html.escape(bio_title)}">'
+            f'<img src="{html.escape(avatar_url)}" alt="{html.escape(name)}" loading="lazy"/>'
+            f'<span class="wg-char-name">{html.escape(name)}</span>'
+            f'<span class="wg-char-role">{html.escape(role)}</span>'
+            f'</div>'
+        )
+    return (
+        f'<div class="wg-coach-panel" id="wg-coaching">'
+        f'<div class="wg-coach-divider">'
+        f'<span class="wg-coach-div-line"></span>'
+        f'<span class="wg-coach-div-text">— COACHING PANEL —</span>'
+        f'<span class="wg-coach-div-line"></span>'
+        f'</div>'
+        f'<div class="wg-char-grid">{"".join(cards)}</div>'
+        f'</div>'
+    )
+
+
+def _landing_html() -> str:
+    return (
+        f'<div class="wg-hero">'
+        f'<div class="wg-rec"><span class="wg-rec-dot"></span>REC</div>'
+        f'<div class="wg-kicker">CBR-RAG Comedy Coaching Engine</div>'
+        f'{_MASCOT}'
+        f'<div class="wg-wordmark">'
+        f'<div class="wg-wordmark-wit">WIT</div>'
+        f'<div class="wg-wordmark-gym">GYM</div>'
+        f'</div>'
+        f'<p class="wg-hero-tagline">Coach your comedy instincts — one situation at a time.</p>'
+        f'</div>'
+    )
+
+
+def _practice_header_html() -> str:
+    return (
+        '<div class="wg-practice-bar">'
+        '<div class="wg-practice-logo">WIT<span>GYM</span></div>'
+        '<div class="wg-practice-sub">CBR-RAG Comedy Engine</div>'
+        '</div>'
+    )
+
+
+# ── Modal scaffold HTML (injected into landing, lives in DOM always) ──────────
+_MODAL_SCAFFOLD = (
+    '<div id="wg-modal-overlay">'
+    '<div id="wg-modal">'
+    '<button class="wg-modal-x" onclick="wgClose()">✕</button>'
+    '<div id="wg-modal-body"></div>'
+    '</div>'
+    '</div>'
+    + _CHAR_MODAL_JS
+)
 
 
 def fill_starter(text: str) -> str:
@@ -489,7 +678,7 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
         err = (
             f'<div class="wg-turn"><div class="wg-user"><span class="wg-label">You</span> '
             f'{html.escape(user_input)}</div>'
-            f'<div style="color:#f87171;padding:.5rem 0">Error: {html.escape(str(e))}</div></div>'
+            f'<div style="color:#dc2626;padding:.5rem 0">Error: {html.escape(str(e))}</div></div>'
         )
         yield format_transcript_html(session["traces"], append_html=err, show_debug=show_debug), gr.update(value="", interactive=True), session
         return
@@ -508,8 +697,6 @@ def toggle_debug(show_debug: bool, session):
     return format_transcript_html(traces, show_debug=show_debug)
 
 
-# ── Theme ─────────────────────────────────────────────────────────────────────
-
 def _theme():
     return (
         gr.themes.Base(
@@ -526,17 +713,14 @@ def _theme():
             input_background_fill="#1a1a1a",
             input_border_color="#2e2e2e",
             border_color_primary="#2e2e2e",
-            color_accent_soft="#f5c518",
         )
     )
 
 
-# ── UI ────────────────────────────────────────────────────────────────────────
-
 def build_ui():
     with gr.Blocks(title="WitGym", css=APP_CSS, theme=_theme()) as demo:
-        session_state = gr.State(_new_session())
-        show_debug_state = gr.State(False)
+        session_state    = gr.State(_new_session())
+        show_debug_state = gr.State(True)   # coaching notes ON by default
 
         # ── Landing screen ────────────────────────────────────────
         with gr.Column(visible=True) as landing_col:
@@ -544,10 +728,16 @@ def build_ui():
             with gr.Row(elem_id="wg-start-btn"):
                 start_btn = gr.Button("START TRAINING →", variant="primary", size="lg")
             gr.HTML('<p class="wg-start-hint">Paste any real-life awkward situation to begin</p>')
+            gr.HTML(
+                f'<a class="wg-scroll-arrow" href="#wg-coaching" '
+                f'onclick="event.preventDefault();document.getElementById(\'wg-coaching\')'
+                f'.scrollIntoView({{behavior:\'smooth\'}})" aria-label="Scroll to coaching panel">▼</a>'
+            )
             gr.HTML(_coaching_panel_html())
+            gr.HTML(_MODAL_SCAFFOLD)
 
         # ── Practice screen ───────────────────────────────────────
-        with gr.Column(visible=False) as practice_col:
+        with gr.Column(visible=False, elem_id="wg-practice") as practice_col:
             gr.HTML(_practice_header_html())
 
             with gr.Column(elem_id="witgym-main"):
@@ -555,7 +745,7 @@ def build_ui():
                     with gr.Column(scale=3):
                         with gr.Group(elem_id="wg-chat-shell"):
                             transcript = gr.HTML(
-                                value=format_transcript_html([]),
+                                value=format_transcript_html([], show_debug=True),
                                 min_height=TRANSCRIPT_MIN_HEIGHT,
                                 max_height=TRANSCRIPT_MAX_HEIGHT,
                                 autoscroll=True,
@@ -570,9 +760,7 @@ def build_ui():
                             )
                             with gr.Row():
                                 submit_btn = gr.Button(
-                                    "Practice Wit →",
-                                    variant="primary",
-                                    scale=4,
+                                    "Practice Wit →", variant="primary", scale=4,
                                     elem_id="wg-submit-btn",
                                 )
                                 clear_btn = gr.Button("New session", size="sm", variant="secondary", scale=1)
@@ -580,13 +768,16 @@ def build_ui():
                         with gr.Row():
                             debug_toggle = gr.Checkbox(
                                 label="Show coaching notes (CBR-RAG debug panels)",
-                                value=False,
+                                value=True,   # ON by default
                             )
 
                     with gr.Column(scale=1, elem_id="wg-sidebar"):
                         gr.HTML('<div class="wg-sidebar-label">Try a situation</div>')
                         for tag, text in STARTERS:
-                            sb = gr.Button(f"[{tag}] {text}", size="sm", variant="secondary", elem_classes=["wg-starter-btn"])
+                            sb = gr.Button(
+                                f"[{tag}] {text}", size="sm", variant="secondary",
+                                elem_classes=["wg-starter-btn"],
+                            )
                             sb.click(fn=fill_starter, inputs=[gr.State(text)], outputs=user_input, queue=False)
 
         # ── Event wiring ──────────────────────────────────────────
@@ -599,15 +790,13 @@ def build_ui():
             fn=practice,
             inputs=[user_input, session_state, show_debug_state],
             outputs=[transcript, user_input, session_state],
-            show_progress="full",
-            show_progress_on=submit_btn,
+            show_progress="full", show_progress_on=submit_btn,
         )
         user_input.submit(
             fn=practice,
             inputs=[user_input, session_state, show_debug_state],
             outputs=[transcript, user_input, session_state],
-            show_progress="full",
-            show_progress_on=submit_btn,
+            show_progress="full", show_progress_on=submit_btn,
         )
         clear_btn.click(
             fn=clear_session,
@@ -620,7 +809,6 @@ def build_ui():
             outputs=[show_debug_state, transcript],
             queue=False,
         )
-
         demo.load(fn=_on_page_load, outputs=transcript, show_progress="hidden")
 
     return demo
