@@ -11,6 +11,7 @@ jobs:
 
       - name: Export exact main tree
         run: |
+          mkdir -p deploy
           git archive HEAD | tar -x -C deploy
           rm -rf deploy/.github
 
