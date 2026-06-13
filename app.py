@@ -18,57 +18,41 @@ from witgym.conversation import ConversationManager
 from witgym.engine import WitGymEngine, get_shared_resources
 from witgym.debug_render import format_transcript_html, thinking_turn_html
 from witgym import config
+from witgym.avatars import char_avatar_url, char_avatar_svg
 
 INDEX_PATH = os.getenv("WITGYM_INDEX_PATH", config.INDEX_PATH)
 _FAVICON = Path(__file__).parent / "assets" / "favicon.png"
 
-# ── DiceBear Avataaars URLs — cartoon-style, free, no copyright ──────────────
-_DICEBEAR = "https://api.dicebear.com/9.x/avataaars/svg"
-
-def _av(seed: str, **kw) -> str:
-    params = "&".join(f"{k}[]={v}" for k, v in kw.items())
-    return f"{_DICEBEAR}?seed={seed}&backgroundColor=transparent&{params}"
-
 # Character data: (name, role-label, card-bg, avatar-url, bio-title, bio-desc)
 CHARACTERS = [
-    ("Michael",  "comedian",    "#5a1a0a",
-     _av("MichaelScott",  top="shortHairShortFlat", topColor="brown",   clothingColor="black",  mouth="smile"),
+    ("Michael",  "comedian",    "#5a1a0a", char_avatar_url("Michael"),
      "Regional Manager",
      "Needs to be the funniest person in the room — always. Even at funerals."),
-    ("Dwight",   "contrarian",  "#2d3d1a",
-     _av("DwightSchrute", top="shortHairShortRound", topColor="brown",  accessories="round",    mouth="default"),
+    ("Dwight",   "contrarian",  "#2d3d1a", char_avatar_url("Dwight"),
      "Assistant (to the) Regional Manager",
      "Treats every situation as a threat to be neutralised through superior preparation."),
-    ("Jim",      "wit",         "#1a2d4a",
-     _av("JimHalpert",    top="shortHairShortFlat", topColor="brown",   clothingColor="navy",   mouth="twinkle"),
+    ("Jim",      "wit",         "#1a2d4a", char_avatar_url("Jim"),
      "Sales Representative",
      "Deflects chaos with a raised eyebrow and impeccable comedic timing."),
-    ("Pam",      "empath",      "#5a1a4a",
-     _av("PamBeesly",     top="longHairStraight",   topColor="brunette",clothingColor="pastelGreen", mouth="smile"),
+    ("Pam",      "empath",      "#5a1a4a", char_avatar_url("Pam"),
      "Receptionist → Office Administrator",
      "Finds the kindest possible way to say the unsayable thing everyone else is thinking."),
-    ("Kevin",    "literalist",  "#3d1a5a",
-     _av("KevinMalone",   top="shortHairShortCurly",topColor="black",   clothingColor="gray",   mouth="eating"),
+    ("Kevin",    "literalist",  "#3d1a5a", char_avatar_url("Kevin"),
      "Accountant",
      "Cuts to the literal truth everyone else is too sophisticated to say out loud."),
-    ("Andy",     "overclaimer", "#7a3010",
-     _av("AndyBernard",   top="shortHairShortFlat", topColor="blonde",  clothingColor="red",    mouth="smile"),
+    ("Andy",     "overclaimer", "#7a3010", char_avatar_url("Andy"),
      "Sales Representative",
      "Overclaims, overshares, and somehow — through sheer confidence — lands it."),
-    ("Stanley",  "cynic",       "#0f2d1a",
-     _av("StanleyHudson", top="shortHairShortFlat", topColor="black",   skinColor="darkBrown",  mouth="sad"),
+    ("Stanley",  "cynic",       "#0f2d1a", char_avatar_url("Stanley"),
      "Sales Representative",
      "Has seen it all. Cares about essentially none of it. Will now return to his crossword."),
-    ("Angela",   "moralist",    "#2a2a0a",
-     _av("AngelaMartin",  top="longHairBun",         topColor="blonde",  clothingColor="black",  mouth="concerned"),
+    ("Angela",   "moralist",    "#2a2a0a", char_avatar_url("Angela"),
      "Head of Accounting",
      "Holds the line on decorum, propriety and cats while everything collapses around her."),
-    ("Ryan",     "hustler",     "#1f0a2d",
-     _av("RyanHoward",    top="shortHairShortRound", topColor="black",   facialHair="beardLight",mouth="default"),
+    ("Ryan",     "hustler",     "#1f0a2d", char_avatar_url("Ryan"),
      "Temp → VP → Temp → Temp",
      "Dresses up insecurity as strategy. The hustle is the product."),
-    ("Kelly",    "enthusiast",  "#6a0a3a",
-     _av("KellyKapoor",   top="longHairCurvy",       topColor="black",   skinColor="brown",      mouth="smile"),
+    ("Kelly",    "enthusiast",  "#6a0a3a", char_avatar_url("Kelly"),
      "Customer Service Representative",
      "Turns raw enthusiasm into an overwhelming and surprisingly effective force of nature."),
 ]
@@ -102,6 +86,12 @@ APP_CSS = """
 /* ── Global dark base ──────────────────────────────────────────────────── */
 body, .gradio-container, .main, footer { background: #141414 !important; }
 
+/* ── Light mode (activated on START TRAINING) ──────────────────────────── */
+body.wg-light-mode,
+body.wg-light-mode .gradio-container,
+body.wg-light-mode .main,
+body.wg-light-mode footer { background: #fffff8 !important; }
+
 :root {
   --wg-bg:     #141414;
   --wg-surf:   #1e1e1e;
@@ -114,33 +104,41 @@ body, .gradio-container, .main, footer { background: #141414 !important; }
   --wg-r:      10px;
 }
 
-/* ── Landing / Hero (exactly one viewport, no scroll) ──────────────────── */
+/* ── Landing / Hero ─────────────────────────────────────────────────────── */
+#wg-landing { background: var(--wg-bg) !important; }
+
 .wg-hero {
-  position: relative; height: 100svh; min-height: 560px;
+  position: relative;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  background: var(--wg-bg); overflow: hidden;
-  padding: 2rem 1rem; text-align: center;
+  background: var(--wg-bg);
+  padding: 5rem 1rem 2.5rem; text-align: center;
 }
 .wg-hero::before {
   content: ''; position: absolute; inset: 0;
-  background-image: radial-gradient(rgba(255,255,255,0.045) 1px, transparent 1px);
+  /* Warm golden dot grid — 2px dots, chic and visible without overwhelming */
+  background-image: radial-gradient(circle, rgba(245,197,24,0.18) 1px, transparent 2px);
   background-size: 24px 24px; pointer-events: none;
 }
 
-/* ● REC indicator */
+/* ● REC indicator — bigger, more visible flicker */
 .wg-rec {
   position: absolute; top: 1.5rem; right: 1.75rem;
-  display: flex; align-items: center; gap: 0.4rem;
+  display: flex; align-items: center; gap: 0.5rem;
   font-family: 'Courier New', monospace;
-  font-size: 0.72rem; font-weight: 700;
-  color: #e53e3e; letter-spacing: 0.2em; z-index: 1;
+  font-size: 0.8rem; font-weight: 700;
+  color: #e53e3e; letter-spacing: 0.22em; z-index: 1;
 }
 .wg-rec-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: #e53e3e; animation: wg-pulse 1.5s ease-in-out infinite;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #e53e3e;
+  box-shadow: 0 0 8px rgba(229,62,62,0.6);
+  animation: wg-pulse 1.4s ease-in-out infinite;
 }
-@keyframes wg-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+@keyframes wg-pulse {
+  0%,100% { opacity: 1;   box-shadow: 0 0 8px rgba(229,62,62,0.6); }
+  50%      { opacity: 0.1; box-shadow: 0 0 2px rgba(229,62,62,0.1); }
+}
 
 /* Kicker */
 .wg-kicker {
@@ -170,39 +168,37 @@ body, .gradio-container, .main, footer { background: #141414 !important; }
   margin-bottom: 1.75rem; z-index: 1;
 }
 
-/* START TRAINING button */
-#wg-start-btn { z-index: 1; justify-content: center !important; }
+.wg-start-hint {
+  font-size: 0.72rem; color: var(--wg-muted); margin-top: 0.4rem;
+  font-style: italic; text-align: center;
+  background: transparent !important;
+}
+
+/* ── Scroll cue: animated down-arrow between tagline and CTA ────────────── */
+.wg-scroll-cue {
+  display: flex; justify-content: center; align-items: center;
+  padding: 0.25rem 0 0.5rem; background: transparent !important;
+}
+.wg-scroll-arrow-svg {
+  animation: wg-arrow-fall 1.9s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(74,222,128,0.5));
+}
+@keyframes wg-arrow-fall {
+  0%,100% { transform: translateY(0);   opacity: 0.55; }
+  50%      { transform: translateY(9px); opacity: 1;    }
+}
+
+/* ── Real Gradio START TRAINING button ──────────────────────────────────── */
+#wg-start-btn { justify-content: center !important; background: transparent !important; padding: 0 !important; }
 #wg-start-btn button {
   font-family: 'Bebas Neue', Impact, sans-serif !important;
   font-size: 1.2rem !important; letter-spacing: 0.22em !important;
   background: var(--wg-green) !important; color: #fff !important;
   border: none !important; border-radius: 50px !important;
   padding: 0.75rem 3.25rem !important;
-  transition: background .2s, transform .15s;
+  transition: background .2s, transform .15s !important;
 }
-#wg-start-btn button:hover { background: #235a40 !important; transform: translateY(-2px); }
-
-.wg-start-hint {
-  font-size: 0.72rem; color: var(--wg-muted); margin-top: 0.55rem;
-  font-style: italic; z-index: 1;
-}
-
-/* Glassy green bouncing scroll arrow */
-.wg-scroll-arrow {
-  position: absolute; bottom: 1.75rem; left: 50%; transform: translateX(-50%);
-  width: 40px; height: 40px; border-radius: 50%;
-  background: linear-gradient(135deg, #2d6a4f 0%, #4ade80 100%);
-  box-shadow: 0 0 18px rgba(74,222,128,0.45), inset 0 1px 0 rgba(255,255,255,0.2);
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; z-index: 2; border: none;
-  animation: wg-bounce 1.9s ease-in-out infinite;
-  font-size: 1rem; color: #fff; text-decoration: none;
-  backdrop-filter: blur(4px);
-}
-@keyframes wg-bounce {
-  0%,100% { transform: translateX(-50%) translateY(0);   box-shadow: 0 0 18px rgba(74,222,128,0.45); }
-  50%      { transform: translateX(-50%) translateY(9px); box-shadow: 0 0 28px rgba(74,222,128,0.65); }
-}
+#wg-start-btn button:hover { background: #235a40 !important; transform: translateY(-2px) !important; }
 
 /* ── Coaching panel ─────────────────────────────────────────────────────── */
 .wg-coach-panel {
@@ -260,7 +256,21 @@ body, .gradio-container, .main, footer { background: #141414 !important; }
 
 /* ── Practice screen: ivory/light override ──────────────────────────────── */
 #wg-practice { background: #fffff8 !important; }
-#wg-practice #wg-chat-shell {
+
+/* Target Gradio's internal wrappers that carry the dark theme background */
+#wg-practice .block,
+#wg-practice .gap,
+#wg-practice .form,
+#wg-practice .scroll-hide,
+#wg-practice .styler,
+#wg-practice > div,
+#wg-practice .gradio-group {
+  background: #faf9f6 !important;
+  border-color: #e0d8cc !important;
+}
+#wg-practice #wg-chat-shell,
+#wg-practice #wg-chat-shell .block,
+#wg-practice #wg-chat-shell .gap {
   background: #faf9f6 !important; border-color: #e0d8cc !important;
 }
 #wg-practice .wg-transcript { color: #2a2118; }
@@ -301,15 +311,20 @@ body, .gradio-container, .main, footer { background: #141414 !important; }
 #wg-practice .wg-starter-btn button:hover {
   border-color: var(--wg-green) !important; background: #f0fdf4 !important;
 }
+#wg-practice textarea,
+#wg-practice input,
+#wg-practice input[type="text"],
 #wg-practice .gradio-container textarea,
 #wg-practice .gradio-container input[type="text"] {
   background: #fff !important; color: #2a2118 !important; border-color: #e0d8cc !important;
 }
-#wg-practice .gradio-container textarea::placeholder,
-#wg-practice .gradio-container input[type="text"]::placeholder { color: #9e9288 !important; }
+#wg-practice textarea::placeholder,
+#wg-practice input::placeholder { color: #9e9288 !important; }
+#wg-practice button.secondary,
 #wg-practice .gradio-container button.secondary {
   background: #f5f2eb !important; border-color: #e0d8cc !important; color: #3d3429 !important;
 }
+#wg-practice label span,
 #wg-practice .gradio-container label span { color: #6b6258 !important; }
 
 /* Main layout */
@@ -422,6 +437,23 @@ body, .gradio-container, .main, footer { background: #141414 !important; }
 .wg-panel-dim    { background: #111; border-color: var(--wg-border); color: var(--wg-muted); }
 .wg-clickable    { cursor: pointer; transition: opacity .15s, transform .1s; }
 .wg-clickable:hover { opacity: 0.85; transform: scale(1.01); }
+
+/* Scene card: gentle border-pulse + arrow float to signal interactivity */
+@keyframes wg-scene-beckon {
+  0%,100% { box-shadow: 0 0 0 0 rgba(96,165,250,0);    border-color: #1e3558; }
+  50%      { box-shadow: 0 0 0 5px rgba(96,165,250,0.2); border-color: #60a5fa; }
+}
+@keyframes wg-arrow-float {
+  0%,100% { transform: translate(0,0);       opacity: 0.6; }
+  50%      { transform: translate(2px,-2px);  opacity: 1;   }
+}
+.wg-panel-blue.wg-clickable {
+  animation: wg-scene-beckon 2.8s ease-in-out infinite;
+}
+.wg-scene-arrow { display: inline-block; animation: wg-arrow-float 2.8s ease-in-out infinite; }
+/* Pause animations when user hovers — reduces distraction mid-read */
+.wg-panel-blue.wg-clickable:hover { animation: none; }
+.wg-panel-blue.wg-clickable:hover .wg-scene-arrow { animation: none; opacity: 1; }
 .wg-meta { border-collapse: collapse; width: 100%; }
 .wg-meta td { padding: 0.1rem 0.5rem 0.1rem 0; vertical-align: top; }
 .wg-rule { border-top: 1px solid var(--wg-border); margin: 0.75rem 0; }
@@ -506,33 +538,55 @@ body, .gradio-container, .main, footer { background: #141414 !important; }
 }
 """
 
-# ── Character card popup JS (coaching panel) ──────────────────────────────────
-_CHAR_MODAL_JS = """
-<script>
-(function(){
-  function wgClose(){document.getElementById('wg-modal-overlay').style.display='none';}
-  function wgOpenBio(name,title,desc,avatarUrl){
-    var b=document.getElementById('wg-modal-body');
-    b.innerHTML='<div class="wg-pop-show">THE COACHING PANEL</div>'
-      +'<div class="wg-pop-row">'
-      +'<div class="wg-pop-char">'
-      +'<img class="wg-pop-avatar" src="'+avatarUrl+'"/>'
-      +'<div class="wg-pop-name">'+name+'</div>'
-      +'<div class="wg-pop-title">'+title+'</div>'
-      +'</div>'
-      +'<div class="wg-pop-right">'
-      +'<div class="wg-pop-bio">'+desc+'</div>'
-      +'</div></div>';
-    document.getElementById('wg-modal-overlay').style.display='flex';
-  }
-  window.wgClose=wgClose;
-  window.wgOpenBio=wgOpenBio;
-  document.addEventListener('click',function(e){
-    if(e.target===document.getElementById('wg-modal-overlay')) wgClose();
-  });
-})();
-</script>
+# ── Global JS — injected into page <head> via gr.HTML(head=...) ──────────────
+# Using head= instead of value= because <script> tags in gr.HTML value are NOT
+# executed by Gradio 6.x (they're set via innerHTML). head= is the correct API.
+# All three functions use a SINGLE modal (#wg-modal-overlay) at top DOM level
+# so it's never hidden by a parent column's display:none.
+_GLOBAL_JS = """
+window.wgClose = function() {
+  var o = document.getElementById('wg-modal-overlay');
+  if (o) o.style.display = 'none';
+};
+window.wgOpenBio = function(name, title, desc, avatarUrl) {
+  var o = document.getElementById('wg-modal-overlay');
+  var b = document.getElementById('wg-modal-body');
+  if (!o || !b) return;
+  b.innerHTML = '<div class="wg-pop-show">THE COACHING PANEL</div>'
+    + '<div class="wg-pop-row">'
+    + '<div class="wg-pop-char">'
+    + '<img class="wg-pop-avatar" src="' + avatarUrl + '" alt="' + name + '"/>'
+    + '<div class="wg-pop-name">' + name + '</div>'
+    + '<div class="wg-pop-title">' + title + '</div>'
+    + '</div>'
+    + '<div class="wg-pop-right">'
+    + '<div class="wg-pop-bio">' + desc + '</div>'
+    + '</div></div>';
+  o.style.display = 'flex';
+};
+window.wgOpenScene = function(character, show, setup, response, why, avatarUrl, title) {
+  var o = document.getElementById('wg-modal-overlay');
+  var b = document.getElementById('wg-modal-body');
+  if (!o || !b) return;
+  b.innerHTML = '<div class="wg-pop-show">' + show + '</div>'
+    + '<div class="wg-pop-row">'
+    + '<div class="wg-pop-char">'
+    + '<img class="wg-pop-avatar" src="' + avatarUrl + '" alt="' + character + '"/>'
+    + '<div class="wg-pop-name">' + character + '</div>'
+    + '<div class="wg-pop-title">' + title + '</div>'
+    + '</div>'
+    + '<div class="wg-pop-right">'
+    + '<div class="wg-pop-setup">&ldquo;' + setup + '&rdquo;</div>'
+    + '<div class="wg-pop-bubble">' + response + '</div>'
+    + '</div></div>'
+    + '<div class="wg-pop-why">'
+    + '<div class="wg-pop-why-title">WHY IT WORKS</div>'
+    + '<div class="wg-pop-why-body">' + why + '</div>'
+    + '</div>';
+  o.style.display = 'flex';
+};
 """
+_GLOBAL_JS_SCRIPT_TAG = "<script>" + _GLOBAL_JS + "</script>"
 
 # ── App state & engine ────────────────────────────────────────────────────────
 
@@ -593,9 +647,11 @@ def _coaching_panel_html() -> str:
         onclick = (
             f"wgOpenBio({json.dumps(name)},{json.dumps(bio_title)},{json.dumps(bio_desc)},{json.dumps(avatar_url)})"
         )
+        fallback = char_avatar_svg(name)
         cards.append(
             f'<div class="wg-char-card" onclick="{html.escape(onclick)}" title="{html.escape(bio_title)}">'
-            f'<img src="{html.escape(avatar_url)}" alt="{html.escape(name)}" loading="lazy"/>'
+            f'<img src="{html.escape(avatar_url)}" alt="{html.escape(name)}" loading="lazy"'
+            f' onerror="this.onerror=null;this.src=\'{fallback}\'"/>'
             f'<span class="wg-char-name">{html.escape(name)}</span>'
             f'<span class="wg-char-role">{html.escape(role)}</span>'
             f'</div>'
@@ -610,6 +666,19 @@ def _coaching_panel_html() -> str:
         f'<div class="wg-char-grid">{"".join(cards)}</div>'
         f'</div>'
     )
+
+
+_SCROLL_CUE_HTML = (
+    '<div class="wg-scroll-cue" aria-hidden="true">'
+    '<svg class="wg-scroll-arrow-svg" viewBox="0 0 24 28" width="24" height="28" '
+    'fill="none" xmlns="http://www.w3.org/2000/svg">'
+    '<line x1="12" y1="2" x2="12" y2="20" stroke="rgba(74,222,128,0.65)" '
+    'stroke-width="1.5" stroke-linecap="round"/>'
+    '<polyline points="5,13 12,22 19,13" fill="none" stroke="rgba(74,222,128,0.65)" '
+    'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'
+    '</svg>'
+    '</div>'
+)
 
 
 def _landing_html() -> str:
@@ -636,15 +705,16 @@ def _practice_header_html() -> str:
     )
 
 
-# ── Modal scaffold HTML (injected into landing, lives in DOM always) ──────────
+# ── Single modal scaffold — rendered at top DOM level (outside any Column) ────
+# position:fixed so parent visibility doesn't matter.
+# JS is injected via head= param on the gr.HTML that renders this.
 _MODAL_SCAFFOLD = (
-    '<div id="wg-modal-overlay">'
+    '<div id="wg-modal-overlay" onclick="if(event.target===this)wgClose()">'
     '<div id="wg-modal">'
     '<button class="wg-modal-x" onclick="wgClose()">✕</button>'
     '<div id="wg-modal-body"></div>'
     '</div>'
     '</div>'
-    + _CHAR_MODAL_JS
 )
 
 
@@ -718,23 +788,24 @@ def _theme():
 
 
 def build_ui():
-    with gr.Blocks(title="WitGym", css=APP_CSS, theme=_theme()) as demo:
+    # css=, theme=, head= belong in launch() in Gradio 6.x (SSR-compatible path).
+    # Passing them to gr.Blocks() triggers a deprecation path that breaks SSR hydration on HF Spaces.
+    with gr.Blocks(title="WitGym") as demo:
+        # Modal scaffold at top DOM level — position:fixed, never hidden by Column visibility toggling.
+        # JS is injected via launch(head=...) below, not here, for SSR compatibility.
+        gr.HTML(value=_MODAL_SCAFFOLD)
+
         session_state    = gr.State(_new_session())
         show_debug_state = gr.State(True)   # coaching notes ON by default
 
         # ── Landing screen ────────────────────────────────────────
-        with gr.Column(visible=True) as landing_col:
+        with gr.Column(visible=True, elem_id="wg-landing") as landing_col:
             gr.HTML(_landing_html())
+            gr.HTML(_SCROLL_CUE_HTML)
             with gr.Row(elem_id="wg-start-btn"):
                 start_btn = gr.Button("START TRAINING →", variant="primary", size="lg")
             gr.HTML('<p class="wg-start-hint">Paste any real-life awkward situation to begin</p>')
-            gr.HTML(
-                f'<a class="wg-scroll-arrow" href="#wg-coaching" '
-                f'onclick="event.preventDefault();document.getElementById(\'wg-coaching\')'
-                f'.scrollIntoView({{behavior:\'smooth\'}})" aria-label="Scroll to coaching panel">▼</a>'
-            )
             gr.HTML(_coaching_panel_html())
-            gr.HTML(_MODAL_SCAFFOLD)
 
         # ── Practice screen ───────────────────────────────────────
         with gr.Column(visible=False, elem_id="wg-practice") as practice_col:
@@ -785,6 +856,7 @@ def build_ui():
             fn=lambda: (gr.update(visible=False), gr.update(visible=True)),
             outputs=[landing_col, practice_col],
             queue=False,
+            js="() => { document.body.classList.add('wg-light-mode'); return []; }",
         )
         submit_btn.click(
             fn=practice,
@@ -819,7 +891,15 @@ demo.queue(default_concurrency_limit=1)
 demo.favicon_path = _FAVICON
 
 if __name__ == "__main__":
-    kwargs = dict(favicon_path=_FAVICON)
+    # css=, theme=, head= must be in launch() for Gradio 6.x SSR compatibility (HF Spaces).
+    # In SSR mode Node.js renders components server-side; these params are only correctly
+    # threaded through when passed at launch time, not at Blocks() construction time.
+    kwargs = dict(
+        favicon_path=_FAVICON,
+        css=APP_CSS,
+        theme=_theme(),
+        head=_GLOBAL_JS_SCRIPT_TAG,
+    )
     if os.getenv("SPACE_ID"):
         kwargs["server_name"] = "0.0.0.0"
     demo.launch(**kwargs)
