@@ -72,6 +72,9 @@ STARTERS = [
     ("Anxiety",        "I've been ignoring a voicemail so long it feels like a legal risk."),
     ("Procrastination","I went to bed early last night."),
     ("Self-awareness", "I sent a complaint about my manager to my manager."),
+    ("Coach me",       "Help me respond when someone asks about my job and I don't know what to say."),
+    ("Comeback",       "How would you handle it if someone called you 'surprisingly competent'?"),
+    ("Explain",        "Teach me why it's funny when someone gives a backhanded compliment."),
 ]
 
 TRANSCRIPT_MIN_HEIGHT = 440
@@ -408,6 +411,15 @@ body.wg-light-mode footer { background: #fffff8 !important; }
   font-size: 1.2rem; line-height: 1.6; color: #c6f6d5; font-weight: 500;
 }
 .wg-coach-reply--compact { margin-top: 0.5rem; }
+
+.wg-mode-badge {
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.72rem;
+  letter-spacing: 0.18em; padding: 0.15rem 0.55rem; border-radius: 20px;
+  display: inline-block; margin-bottom: 0.4rem;
+}
+.wg-mode-banter { background: #1a3d2b; color: #4ade80; border: 1px solid #2d6a4f; }
+.wg-mode-wit    { background: #3d2a00; color: #fcd34d; border: 1px solid #92400e; }
+.wg-mode-coach  { background: #050e1e; color: #93c5fd; border: 1px solid #1e3558; }
 
 /* Debug toggle */
 .wg-debug-toggle {
@@ -914,6 +926,10 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
             apply_stream_event(stream_state, event)
             if event.phase == "metadata":
                 progress(0.2, desc="Reading the room…")
+            elif event.phase == "banter":
+                progress(0.5, desc="Banter mode…")
+            elif event.phase == "coaching_ask":
+                progress(0.5, desc="Coaching — asking…")
             elif event.phase == "scenes":
                 progress(0.35, desc="Finding precedent…")
             elif event.phase == "candidate_start":

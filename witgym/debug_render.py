@@ -49,6 +49,40 @@ def _jstr(text: str) -> str:
     return json.dumps(text)
 
 
+_MODE_BADGES = {
+    "banter": '<span class="wg-mode-badge wg-mode-banter">⚡ BANTER</span>',
+    "quick_wit": '<span class="wg-mode-badge wg-mode-wit">🎯 QUICK WIT</span>',
+    "coaching": '<span class="wg-mode-badge wg-mode-coach">🎓 COACHING</span>',
+    "humour": '<span class="wg-mode-badge wg-mode-wit">🎯 QUICK WIT</span>',
+    "smalltalk": '<span class="wg-mode-badge wg-mode-banter">⚡ BANTER</span>',
+}
+
+
+def _mode_badge_html(route: str) -> str:
+    return _MODE_BADGES.get(route, _MODE_BADGES["quick_wit"])
+
+
+def _compact_reply_html(route: str, selected: str, *, coaching_hint: str = "") -> str:
+    hint = f'<div class="wg-dim-italic" style="margin-top:.35rem;font-size:.85rem">{_esc(coaching_hint)}</div>' if coaching_hint else ""
+    return (
+        f'{_mode_badge_html(route)}'
+        '<div class="wg-coach-reply wg-coach-reply--compact">'
+        '<div class="wg-coach-reply-header">Your humor coach</div>'
+        f'<div class="wg-coach-reply-body">{_esc(selected)}</div>'
+        f'{hint}'
+        '</div>'
+    )
+
+
+def _explanation_panel_html(explanation: str) -> str:
+    return (
+        '<div class="wg-panel wg-panel-blue" style="margin-top:.5rem">'
+        '<div class="wg-panel-title">WHY IT WORKS</div>'
+        f'<div>{_esc(explanation)}</div>'
+        '</div>'
+    )
+
+
 _THINKING_ICON = (
     '<svg class="wg-thinking-icon" viewBox="0 0 24 24" width="18" height="18" '
     'aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">'
@@ -140,8 +174,16 @@ class StreamingTurnState:
 
 
 def apply_stream_event(state: StreamingTurnState, event: PipelineEvent) -> None:
+    if event.phase == "banter" and event.response:
+        state.route = "banter"
+        state.selected = event.response.selected
+        return
+    if event.phase == "coaching_ask" and event.response:
+        state.route = "coaching"
+        state.selected = event.response.selected
+        return
     if event.phase == "smalltalk" and event.response:
-        state.route = "smalltalk"
+        state.route = "banter"
         state.selected = event.response.selected
         return
     if event.metadata is not None:
@@ -174,6 +216,7 @@ def apply_stream_event(state: StreamingTurnState, event: PipelineEvent) -> None:
         state.final_text = event.response.selected
         state.selected = event.response.selected
         state.candidates = event.response.candidates
+        state.route = event.response.route
         state.streaming_final = False
 
 
@@ -244,12 +287,21 @@ def format_streaming_turn_html(state: StreamingTurnState, show_debug: bool = Tru
         f'<div class="wg-user"><span class="wg-label">You</span> {_esc(state.user_input)}</div>',
     ]
 
-    if state.route == "smalltalk" and state.selected:
+    if state.route in ("banter", "smalltalk") and state.selected:
         parts += [
-            '<div class="wg-coach-reply wg-coach-reply--compact wg-coach-reply--new">',
-            '<div class="wg-coach-reply-header">Your humor coach</div>',
-            f'<div class="wg-coach-reply-body">{_esc(state.selected)}</div>',
-            '</div></div>',
+            _compact_reply_html("banter", state.selected),
+            '</div>',
+        ]
+        return "".join(parts)
+
+    if state.route == "coaching" and state.selected and state.metadata is None:
+        parts += [
+            _compact_reply_html(
+                "coaching",
+                state.selected,
+                coaching_hint="coaching mode — waiting for your answer",
+            ),
+            '</div>',
         ]
         return "".join(parts)
 
@@ -287,6 +339,7 @@ def format_streaming_turn_html(state: StreamingTurnState, show_debug: bool = Tru
     if display_text:
         polish = ' · <span class="wg-dim-italic">polishing…</span>' if state.streaming_final else ""
         parts += [
+            _mode_badge_html(state.route),
             '<div class="wg-coach-reply wg-coach-reply--new">',
             f'<div class="wg-coach-reply-header">Your humor coach{persona_label}{polish}</div>',
             f'<div class="wg-coach-reply-body">{_esc(display_text)}</div>',
@@ -342,12 +395,21 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
         f'<div class="wg-user"><span class="wg-label">You</span> {_esc(user_input)}</div>',
     ]
 
-    if result.route == "smalltalk":
+    if result.route in ("banter", "smalltalk"):
         parts += [
-            '<div class="wg-coach-reply wg-coach-reply--compact">',
-            '<div class="wg-coach-reply-header">Your humor coach</div>',
-            f'<div class="wg-coach-reply-body">{_esc(result.selected)}</div>',
-            '</div></div>',
+            _compact_reply_html("banter", result.selected),
+            '</div>',
+        ]
+        return "".join(parts)
+
+    if result.route == "coaching" and result.coaching_question and not result.candidates:
+        parts += [
+            _compact_reply_html(
+                "coaching",
+                result.selected,
+                coaching_hint="coaching mode — waiting for your answer",
+            ),
+            '</div>',
         ]
         return "".join(parts)
 
@@ -372,6 +434,7 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
     new_cls = " wg-coach-reply--new" if is_last else ""
 
     parts += [
+        _mode_badge_html(result.route),
         _twist_meter_html(result.metadata.twist_potential),
         '<div class="wg-debug-toggle">',
         '<span class="wg-debug-toggle-line"></span>',
@@ -385,8 +448,10 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
         f'<div class="wg-coach-reply-header">Your humor coach{persona_label}{another_take_btn}</div>',
         f'<div class="wg-coach-reply-body">{_esc(result.selected)}</div>',
         '</div>',
-        '<div class="wg-rule"></div></div>',
     ]
+    if result.explanation:
+        parts.append(_explanation_panel_html(result.explanation))
+    parts.append('<div class="wg-rule"></div></div>')
     return "".join(parts)
 
 
@@ -427,7 +492,7 @@ def format_transcript_html(
 # Legacy helpers
 def format_trace(result: WitGymResponse, user_input: str) -> str:
     lines = [f"**You:** {user_input}", f"**WitGym:** {result.selected}", ""]
-    if result.route != "smalltalk":
+    if result.route not in ("banter", "smalltalk"):
         meta = result.metadata
         lines.append(f"_archetype={meta.archetype.value}, tension={meta.tension_type.value}_")
     return "\n".join(lines)

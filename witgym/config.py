@@ -3,7 +3,7 @@ import os
 import torch
 
 # LLM — set LLM_MODEL_ID in env / HF Space secrets to swap models (local + API)
-LLM_MODEL_ID = os.getenv("LLM_MODEL_ID", "Qwen/Qwen3.5-9B")
+LLM_MODEL_ID = os.getenv("LLM_MODEL_ID", "Qwen/Qwen3.6-27B")
 MODEL_ID = LLM_MODEL_ID  # backward compat for imports
 
 EMBED_MODEL_ID = "BAAI/bge-small-en-v1.5"
@@ -56,7 +56,21 @@ CLICHE_LOGIT_PENALTY = -5.0
 CLICHE_PENALTY_TOKENS = 6   # Penalise first N tokens of the obvious response
 
 # HuggingFace auth + inference backend
-HF_TOKEN = os.getenv("HF_TOKEN", "")
+def _hf_token_from_zshrc() -> str:
+    zshrc = os.path.expanduser("~/.zshrc")
+    if not os.path.isfile(zshrc):
+        return ""
+    with open(zshrc, encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("export HF_TOKEN="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    return ""
+
+
+_zshrc_hf = _hf_token_from_zshrc()
+HF_TOKEN = _zshrc_hf or os.getenv("HF_TOKEN", "")
+if _zshrc_hf:
+    os.environ["HF_TOKEN"] = _zshrc_hf
 # Org dataset on Spaces; override via env for local dev (e.g. akshay4/witgym-data)
 WITGYM_DATA_REPO = os.getenv(
     "WITGYM_DATA_REPO",
@@ -65,7 +79,12 @@ WITGYM_DATA_REPO = os.getenv(
 # "local" = Transformers on device; "hf_api" = Inference Providers (Spaces default)
 LLM_BACKEND = os.getenv("LLM_BACKEND", "local")
 # Qwen3.5-9B thinking-mode toggle requires Together; "auto" often 400s on extra_body
-HF_INFERENCE_PROVIDER = os.getenv(
-    "HF_INFERENCE_PROVIDER",
-    "together" if "Qwen3.5" in LLM_MODEL_ID else "auto",
-)
+def _default_inference_provider() -> str:
+    if "Qwen3.5" in LLM_MODEL_ID:
+        return "together"
+    if "Qwen3.6" in LLM_MODEL_ID:
+        return "featherless-ai"
+    return "auto"
+
+
+HF_INFERENCE_PROVIDER = os.getenv("HF_INFERENCE_PROVIDER", _default_inference_provider())
