@@ -3,43 +3,40 @@ import html
 import json
 from typing import List, Tuple, Any
 from witgym.schemas import WitGymResponse
+from witgym.avatars import char_avatar_url
 
-_DICEBEAR = "https://api.dicebear.com/9.x/avataaars/svg"
-
-# Maps character first-name or full-name → (title, dicebear-seed, bg)
-_CHAR_META: dict[str, tuple[str, str]] = {
-    "michael":  ("Regional Manager",                   "MichaelScott"),
-    "dwight":   ("Assistant (to the) Reg. Manager",    "DwightSchrute"),
-    "jim":      ("Sales Representative",               "JimHalpert"),
-    "pam":      ("Receptionist",                       "PamBeesly"),
-    "kevin":    ("Accountant",                         "KevinMalone"),
-    "andy":     ("Sales Representative",               "AndyBernard"),
-    "stanley":  ("Sales Representative",               "StanleyHudson"),
-    "angela":   ("Head of Accounting",                 "AngelaMartin"),
-    "ryan":     ("Temp → VP → Temp",                   "RyanHoward"),
-    "kelly":    ("Customer Service Rep",               "KellyKapoor"),
-    "michael scott":  ("Regional Manager",             "MichaelScott"),
-    "dwight schrute": ("Asst. (to the) Reg. Manager", "DwightSchrute"),
-    "jim halpert":    ("Sales Representative",         "JimHalpert"),
-    "pam beesly":     ("Receptionist",                 "PamBeesly"),
-    "kevin malone":   ("Accountant",                   "KevinMalone"),
-    "andy bernard":   ("Sales Representative",         "AndyBernard"),
-    "stanley hudson": ("Sales Representative",         "StanleyHudson"),
-    "angela martin":  ("Head of Accounting",           "AngelaMartin"),
-    "ryan howard":    ("Temp → VP → Temp",             "RyanHoward"),
-    "kelly kapoor":   ("Customer Service Rep",         "KellyKapoor"),
+# Maps character first-name or full-name → title string
+_CHAR_TITLES: dict[str, str] = {
+    "michael":        "Regional Manager",
+    "dwight":         "Assistant (to the) Reg. Manager",
+    "jim":            "Sales Representative",
+    "pam":            "Receptionist",
+    "kevin":          "Accountant",
+    "andy":           "Sales Representative",
+    "stanley":        "Sales Representative",
+    "angela":         "Head of Accounting",
+    "ryan":           "Temp → VP → Temp",
+    "kelly":          "Customer Service Rep",
+    "michael scott":  "Regional Manager",
+    "dwight schrute": "Asst. (to the) Reg. Manager",
+    "jim halpert":    "Sales Representative",
+    "pam beesly":     "Receptionist",
+    "kevin malone":   "Accountant",
+    "andy bernard":   "Sales Representative",
+    "stanley hudson": "Sales Representative",
+    "angela martin":  "Head of Accounting",
+    "ryan howard":    "Temp → VP → Temp",
+    "kelly kapoor":   "Customer Service Rep",
 }
 
 
 def _avatar_url(character: str) -> str:
-    key = character.lower().strip()
-    seed = _CHAR_META.get(key, (None, character.replace(" ", "")))[1]
-    return f"{_DICEBEAR}?seed={seed}&backgroundColor=transparent"
+    return char_avatar_url(character)
 
 
 def _char_title(character: str) -> str:
     key = character.lower().strip()
-    return _CHAR_META.get(key, ("The Office",))[0]
+    return _CHAR_TITLES.get(key, "The Office")
 
 
 def _esc(text: str) -> str:
@@ -100,7 +97,7 @@ def _debug_panels_html(result: WitGymResponse) -> str:
         parts += [
             f'<div class="wg-panel wg-panel-blue wg-clickable" onclick="{_esc(onclick)}" '
             f'title="Click to see {_esc(char)}\'s full scene">',
-            f'<div class="wg-panel-title">Retrieved Scene {i} — {_esc(show)} · click to expand ↗</div>',
+            f'<div class="wg-panel-title">Retrieved Scene {i} — {_esc(show)} · click to expand <span class="wg-scene-arrow">↗</span></div>',
             f'<div><span class="wg-bold">{_esc(char)}</span> <span class="wg-dim">· {_esc(title)}</span></div>',
             f'<div><span class="wg-dim">Setup:</span> {_esc(scene.setup)}</div>',
             f'<div><span class="wg-dim">Response:</span> {_esc(scene.response)}</div>',
@@ -157,80 +154,21 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
     return "".join(parts)
 
 
-# JS for coaching-note toggle AND scene popup
+# JS for coaching-note toggle only.
+# wgOpenScene is defined once in _practice_header_html() (static, never re-rendered).
 _PAGE_JS = """<script>
 (function(){
-  // Collapsible coaching notes
   document.querySelectorAll('.wg-debug-toggle').forEach(function(t){
-    if(t._wg) return; t._wg=true;
+    if(t._wg)return;t._wg=true;
     t.addEventListener('click',function(){
       var b=t.nextElementSibling;
       var ch=t.querySelector('.wg-debug-chevron');
       var c=b.classList.toggle('wg-collapsed');
-      if(ch) ch.textContent=c?'▶':'▼';
+      if(ch)ch.textContent=c?'▶':'▼';
     });
   });
-
-  // Scene popup — wgOpenScene may already be defined by landing scaffold; extend it
-  if(!window.wgOpenScene){
-    window.wgClose=function(){
-      var o=document.getElementById('wg-modal-overlay');
-      if(o) o.style.display='none';
-    };
-    window.wgOpenScene=function(character,show,setup,response,why,avatarUrl,title){
-      var o=document.getElementById('wg-modal-overlay');
-      var b=document.getElementById('wg-modal-body');
-      if(!o||!b) return;
-      b.innerHTML='<div class="wg-pop-show">'+show+'</div>'
-        +'<div class="wg-pop-row">'
-        +'<div class="wg-pop-char"><img class="wg-pop-avatar" src="'+avatarUrl+'"/>'
-        +'<div class="wg-pop-name">'+character+'</div>'
-        +'<div class="wg-pop-title">'+title+'</div></div>'
-        +'<div class="wg-pop-right">'
-        +'<div class="wg-pop-setup">“'+setup+'”</div>'
-        +'<div class="wg-pop-bubble">'+response+'</div>'
-        +'</div></div>'
-        +'<div class="wg-pop-why"><div class="wg-pop-why-title">WHY IT WORKS</div>'
-        +'<div class="wg-pop-why-body">'+why+'</div></div>';
-      o.style.display='flex';
-    };
-    document.addEventListener('click',function(e){
-      if(e.target===document.getElementById('wg-modal-overlay')) window.wgClose();
-    });
-  } else {
-    // wgOpenScene already defined (landing scaffold); just wire scene popup to it
-    var _orig=window.wgOpenScene;
-    window.wgOpenScene=function(character,show,setup,response,why,avatarUrl,title){
-      var o=document.getElementById('wg-modal-overlay');
-      var b=document.getElementById('wg-modal-body');
-      if(!o||!b){ _orig&&_orig(character,show,setup,response,why,avatarUrl,title); return; }
-      b.innerHTML='<div class="wg-pop-show">'+show+'</div>'
-        +'<div class="wg-pop-row">'
-        +'<div class="wg-pop-char"><img class="wg-pop-avatar" src="'+avatarUrl+'"/>'
-        +'<div class="wg-pop-name">'+character+'</div>'
-        +'<div class="wg-pop-title">'+title+'</div></div>'
-        +'<div class="wg-pop-right">'
-        +'<div class="wg-pop-setup">“'+setup+'”</div>'
-        +'<div class="wg-pop-bubble">'+response+'</div>'
-        +'</div></div>'
-        +'<div class="wg-pop-why"><div class="wg-pop-why-title">WHY IT WORKS</div>'
-        +'<div class="wg-pop-why-body">'+why+'</div></div>';
-      o.style.display='flex';
-    };
-  }
 })();
 </script>"""
-
-# Modal scaffold injected into the practice screen transcript
-# (The landing already has it; we need it here too for when the user is on the practice screen)
-_PRACTICE_MODAL = """
-<div id="wg-modal-overlay" style="display:none" onclick="if(event.target===this)wgClose()">
-  <div id="wg-modal">
-    <button class="wg-modal-x" onclick="wgClose()">✕</button>
-    <div id="wg-modal-body"></div>
-  </div>
-</div>
-"""
 
 
 def format_transcript_html(
@@ -259,7 +197,7 @@ def format_transcript_html(
         ]
         body = "".join(blocks) + append_html
 
-    return f'{_PRACTICE_MODAL}<div class="wg-transcript">{body}</div>{_PAGE_JS}'
+    return f'<div class="wg-transcript">{body}</div>{_PAGE_JS}'
 
 
 # Legacy helpers
