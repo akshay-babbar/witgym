@@ -48,6 +48,28 @@ def _fmt_chip(value: str) -> str:
     return value.replace("_", " ").upper()
 
 
+# Succinct definitions for each comedy structural property — shown on chip click
+_CHIP_DEFS: dict[str, tuple[str, str]] = {
+    # Archetypes
+    "status_assertion":   ("STATUS ASSERTION",     "Who's in charge here? Comedy exploits the gap between perceived and actual authority."),
+    "self_delusion":      ("SELF-DELUSION",         "The speaker's internal narrative and external reality are on different planets. Exposure is inevitable."),
+    "power_inversion":    ("POWER INVERSION",       "Expected hierarchy flips. The person who should win, loses — and the reversal is the joke."),
+    "anxiety_escalation": ("ANXIETY ESCALATION",    "A small worry snowballs into catastrophe in real time. Comedy lives in watching the spiral."),
+    "social_fail":        ("SOCIAL PERFORMANCE FAIL", "The attempt to appear normal backfires. The harder the try, the bigger the collapse."),
+    "misplaced_conf":     ("MISPLACED CONFIDENCE",  "Maximum certainty, zero basis for it. The most dangerous form of comedy."),
+    # Tensions
+    "social_embarrass":   ("SOCIAL EMBARRASSMENT",  "The gap between how you want to appear and how you actually appear. Everyone sees it except you."),
+    "existential":        ("EXISTENTIAL ANXIETY",   "The joke touches something deeper — identity, mortality, meaning. The laugh is a release valve."),
+    "status_threat":      ("STATUS THREAT",         "Someone's rank or belonging is under attack. Comedy exploits the gap between deserved and claimed status."),
+    "identity_expose":    ("IDENTITY EXPOSURE",     "A mask slips. What someone really is gets revealed against their will. Truth was always funnier."),
+    "logic_collapse":     ("LOGIC COLLAPSE",        "A belief or argument implodes under its own internal contradictions. Comedy as structural failure."),
+    # Distances
+    "mild":               ("MILD VIOLATION",        "Gentle subversion. Safe for a work meeting. The laugh is a small, polite exhale."),
+    "moderate":           ("MODERATE VIOLATION",    "Has an edge. Makes the room slightly uncomfortable in a productive way. The sweet spot."),
+    "sharp":              ("SHARP VIOLATION",       "Cuts deep. The kind of line that makes people go quiet, then laugh harder than expected."),
+}
+
+
 def _jstr(text: str) -> str:
     """JSON-encode a string for safe embedding in an HTML onclick attribute."""
     return json.dumps(text)
@@ -110,29 +132,40 @@ def thinking_turn_html(user_input: str) -> str:
     )
 
 
+def _chip_onclick(value: str) -> str:
+    title, defn = _CHIP_DEFS.get(value, (_fmt_chip(value), "A comedy structural property."))
+    return f"wgOpenChip({_jstr(title)},{_jstr(defn)})"
+
+
 def _meta_pass1_html(meta) -> str:
+    arc_click = _chip_onclick(meta.archetype.value)
+    ten_click  = _chip_onclick(meta.tension_type.value)
+    vio_click  = _chip_onclick(meta.violation_distance.value)
+    _connector_onclick = "wgOpenChip(" + _jstr("CONNECTOR") + "," + _jstr("A word or phrase with two simultaneous readings. When it lands, both meanings hit at once — that’s the mechanism.") + ")"
     connector_chip = (
         f'<div class="wg-chip-row">'
         f'<span class="wg-chip-label">connector</span>'
-        f'<span class="wg-chip wg-chip-green">{_esc(meta.connector)}</span>'
+        f'<span class="wg-chip wg-chip-green wg-chip-clickable"'
+        f' onclick="{_esc(_connector_onclick)}"'
+        f' title="what is a connector?">{_esc(meta.connector)}</span>'
         f'</div>'
     ) if meta.connector else ""
     return (
         '<div class="wg-panel wg-panel-yellow">'
-        '<div class="wg-panel-title">Pass 1 — Extracted Metadata</div>'
+        '<div class="wg-panel-title">Neurology of Comedy</div>'
         '<div class="wg-chip-row">'
-        f'<span class="wg-chip wg-chip-cyan">{_esc(_fmt_chip(meta.archetype.value))}</span>'
-        f'<span class="wg-chip wg-chip-purple">{_esc(_fmt_chip(meta.tension_type.value))}</span>'
-        f'<span class="wg-chip wg-chip-orange">{_esc(_fmt_chip(meta.violation_distance.value))}</span>'
+        f'<span class="wg-chip wg-chip-cyan wg-chip-clickable" onclick="{_esc(arc_click)}" title="what is this archetype?">{_esc(_fmt_chip(meta.archetype.value))}</span>'
+        f'<span class="wg-chip wg-chip-purple wg-chip-clickable" onclick="{_esc(ten_click)}" title="what is this tension?">{_esc(_fmt_chip(meta.tension_type.value))}</span>'
+        f'<span class="wg-chip wg-chip-orange wg-chip-clickable" onclick="{_esc(vio_click)}" title="what is this distance?">{_esc(_fmt_chip(meta.violation_distance.value))}</span>'
         '</div>'
         f'{connector_chip}'
         f'<div class="wg-avoided"><span class="wg-dim">avoided →</span> '
         f'<span class="wg-dim-italic">{_esc(meta.obvious_response)}</span></div>'
-        '<div class="wg-capsule">'
+        '<div class="wg-capsule wg-capsule--new">'
         '<div class="wg-capsule-head">SUBTEXT <span class="wg-cap-chev">▶</span></div>'
         f'<div class="wg-capsule-body wg-collapsed">{_esc(meta.subtext)}</div>'
         '</div>'
-        '<div class="wg-capsule">'
+        '<div class="wg-capsule wg-capsule--new">'
         '<div class="wg-capsule-head">POWER DYNAMIC <span class="wg-cap-chev">▶</span></div>'
         f'<div class="wg-capsule-body wg-collapsed">{_esc(meta.power_dynamic)}</div>'
         '</div>'
@@ -332,7 +365,7 @@ def format_streaming_turn_html(state: StreamingTurnState, show_debug: bool = Tru
 
     parts += [
         _twist_meter_html(state.metadata.twist_potential),
-        '<div class="wg-debug-toggle">',
+        '<div class="wg-debug-toggle wg-debug-toggle--new">',
         '<span class="wg-debug-toggle-line"></span>',
         f'<span class="wg-debug-toggle-label">Coaching notes <span class="wg-debug-chevron">{chevron}</span></span>',
         '<span class="wg-debug-toggle-line"></span>',
@@ -439,10 +472,11 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
     # New-turn reveal class for animation
     new_cls = " wg-coach-reply--new" if is_last else ""
 
+    beckon_cls = " wg-debug-toggle--new" if is_last else ""
     parts += [
         _mode_badge_html(result.route),
         _twist_meter_html(result.metadata.twist_potential),
-        '<div class="wg-debug-toggle">',
+        f'<div class="wg-debug-toggle{beckon_cls}">',
         '<span class="wg-debug-toggle-line"></span>',
         f'<span class="wg-debug-toggle-label">Coaching notes <span class="wg-debug-chevron">{chevron}</span></span>',
         '<span class="wg-debug-toggle-line"></span>',
