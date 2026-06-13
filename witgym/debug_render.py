@@ -11,8 +11,8 @@ def _esc(text: str) -> str:
 _THINKING_ICON = (
     '<svg class="wg-thinking-icon" viewBox="0 0 24 24" width="18" height="18" '
     'aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">'
-    '<circle cx="12" cy="12" r="9" stroke="#2d6a4f" stroke-width="2" opacity="0.2"/>'
-    '<path d="M12 3a9 9 0 0 1 9 9" stroke="#2d6a4f" stroke-width="2.5" stroke-linecap="round"/>'
+    '<circle cx="12" cy="12" r="9" stroke="#4ade80" stroke-width="2" opacity="0.25"/>'
+    '<path d="M12 3a9 9 0 0 1 9 9" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round"/>'
     '</svg>'
 )
 
