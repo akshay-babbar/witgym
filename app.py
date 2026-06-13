@@ -166,8 +166,9 @@ body.wg-light-mode footer { background: #fffff8 !important; }
   font-family: 'Bebas Neue', Impact, 'Arial Black', sans-serif;
   font-size: clamp(4.5rem, 18vw, 9rem); letter-spacing: 0.03em;
 }
-.wg-wordmark-wit { color: var(--wg-white); }
-.wg-wordmark-gym { color: var(--wg-yellow); }
+.wg-wordmark-wit { color: var(--wg-white); text-shadow: 0 0 40px rgba(0,0,0,0.6); }
+/* Stronger shadow separates GYM (yellow) from the yellow dot grid behind it */
+.wg-wordmark-gym { color: var(--wg-yellow); text-shadow: 0 2px 20px rgba(0,0,0,0.8), 0 0 60px rgba(0,0,0,0.5); }
 
 .wg-hero-tagline {
   font-family: 'EB Garamond', Georgia, serif; font-style: italic;
@@ -266,11 +267,17 @@ body.wg-light-mode footer { background: #fffff8 !important; }
   font-size: 0.58rem; color: var(--wg-muted); text-align: center;
 }
 
-/* ── Practice screen header (compact) ──────────────────────────────────── */
+/* ── Practice screen header (compact, centered) ─────────────────────────── */
+@keyframes wg-header-drop {
+  0%   { transform: translateY(-10px) scaleY(0.82); opacity: 0; }
+  65%  { transform: translateY(2px) scaleY(1.04);  opacity: 1; }
+  100% { transform: translateY(0) scaleY(1); }
+}
 .wg-practice-bar {
-  display: flex; align-items: center; gap: 0.75rem;
+  display: flex; align-items: center; justify-content: center; gap: 0.75rem;
   padding: 0.75rem 1.25rem; border-bottom: 1px solid #d8d0c4;
   background: #faf9f6;
+  animation: wg-header-drop 0.42s cubic-bezier(.22,.68,0,1.35) both;
 }
 .wg-practice-logo {
   font-family: 'Bebas Neue', Impact, sans-serif;
@@ -459,12 +466,17 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 /* Debug panels */
 .wg-panel {
   border-radius: 7px; padding: 0.6rem 0.8rem;
-  margin: 0.35rem 0; border: 1px solid; font-size: 13px;
+  margin: 0.35rem 0; border: 1px solid; font-size: 14px;
 }
 .wg-panel-title {
-  font-family: 'Bebas Neue', sans-serif; font-size: 0.75rem;
-  letter-spacing: 0.08em; margin-bottom: 0.3rem;
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.82rem;
+  letter-spacing: 0.08em; margin-bottom: 0.35rem;
 }
+/* Clickable chips */
+.wg-chip-clickable {
+  cursor: pointer; transition: filter .15s, transform .1s;
+}
+.wg-chip-clickable:hover { filter: brightness(1.25); transform: scale(1.06); }
 .wg-panel-yellow { background: #1a1000; border-color: #6b3a0a; color: #fcd34d; }
 .wg-panel-yellow .wg-panel-title { color: #fbbf24; }
 .wg-panel-blue   { background: #050e1e; border-color: #1e3558; color: #93c5fd; }
@@ -495,6 +507,22 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 .wg-meta td { padding: 0.1rem 0.5rem 0.1rem 0; vertical-align: top; }
 .wg-rule { border-top: 1px solid var(--wg-border); margin: 0.75rem 0; }
 
+/* ── Coaching notes toggle attention flicker (plays 4× on new turns) ────── */
+@keyframes wg-toggle-beckon {
+  0%,100% { color: var(--wg-muted); box-shadow: none; }
+  40%,60%  { color: var(--wg-yellow); box-shadow: 0 0 10px rgba(245,197,24,0.35); border-color: rgba(245,197,24,0.5); }
+}
+.wg-debug-toggle--new .wg-debug-toggle-label {
+  animation: wg-toggle-beckon 1.1s ease-in-out 0.4s 4 forwards;
+}
+#wg-practice .wg-debug-toggle--new .wg-debug-toggle-label {
+  animation: wg-toggle-beckon-light 1.1s ease-in-out 0.4s 4 forwards;
+}
+@keyframes wg-toggle-beckon-light {
+  0%,100% { color: #9e9288; box-shadow: none; }
+  40%,60%  { color: #b45309; box-shadow: 0 0 8px rgba(180,83,9,0.25); border-color: rgba(180,83,9,0.4); }
+}
+
 /* ── Metadata chips (dark-mode defaults) ────────────────────────────────── */
 .wg-chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.45rem 0 0.35rem; }
 .wg-chip {
@@ -524,7 +552,7 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 }
 .wg-capsule-head:hover { color: var(--wg-white); background: rgba(255,255,255,0.04); }
 .wg-capsule-body {
-  padding: 0.5rem 0.65rem; font-size: 0.86rem;
+  padding: 0.5rem 0.65rem; font-size: 0.92rem;
   color: rgba(240,240,240,0.88); line-height: 1.55;
   border-top: 1px solid var(--wg-border); background: var(--wg-surf2);
 }
@@ -829,6 +857,14 @@ window.wgClose = function() {
   var o = document.getElementById('wg-modal-overlay');
   if (o) o.style.display = 'none';
 };
+window.wgOpenChip = function(title, definition) {
+  var o = document.getElementById('wg-modal-overlay');
+  var b = document.getElementById('wg-modal-body');
+  if (!o || !b) return;
+  b.innerHTML = '<div class="wg-pop-show">' + title + '</div>'
+    + '<div class="wg-pop-bio" style="font-style:normal;font-size:1.05rem">' + definition + '</div>';
+  o.style.display = 'flex';
+};
 window.wgOpenBio = function(name, title, desc, avatarUrl) {
   var o = document.getElementById('wg-modal-overlay');
   var b = document.getElementById('wg-modal-body');
@@ -1091,8 +1127,6 @@ def _theme():
 
 
 def build_ui():
-    # css=, theme=, head= belong in launch() in Gradio 6.x (SSR-compatible path).
-    # Passing them to gr.Blocks() triggers a deprecation path that breaks SSR hydration on HF Spaces.
     with gr.Blocks(title="WitGym") as demo:
         # Modal scaffold at top DOM level — position:fixed, never hidden by Column visibility toggling.
         # JS is injected via launch(head=...) below, not here, for SSR compatibility.
@@ -1134,17 +1168,17 @@ def build_ui():
                             )
                             with gr.Row():
                                 submit_btn = gr.Button(
-                                    "Practice Wit →", variant="primary", scale=4,
+                                    "Flex Your Wit →", variant="primary", scale=4,
                                     elem_id="wg-submit-btn",
                                 )
-                                clear_btn = gr.Button("New session", size="sm", variant="secondary", scale=1)
+                                clear_btn = gr.Button("Start over →", size="sm", variant="secondary", scale=1)
 
 
                     with gr.Column(scale=1, elem_id="wg-sidebar"):
                         gr.HTML('<div class="wg-sidebar-label">Try a situation</div>')
                         for tag, text in STARTERS:
                             sb = gr.Button(
-                                f"[{tag}] {text}", size="sm", variant="secondary",
+                                f"{tag.lower()} · {text}", size="sm", variant="secondary",
                                 elem_classes=["wg-starter-btn"],
                             )
                             sb.click(fn=fill_starter, inputs=[gr.State(text)], outputs=user_input, queue=False)
@@ -1179,13 +1213,16 @@ def build_ui():
 
 
 demo = build_ui()
+# Attach css/theme/head to the Blocks object at module level so HF Spaces picks them up
+# when it imports `demo` and calls its own launch() without these kwargs.
+# Gradio 6.x reads these from the Blocks object if not explicitly passed to launch().
+demo.css   = APP_CSS
+demo.theme = _theme()
+demo.head  = _GLOBAL_JS_SCRIPT_TAG
 demo.queue(default_concurrency_limit=1)
 demo.favicon_path = _FAVICON
 
 if __name__ == "__main__":
-    # css=, theme=, head= must be in launch() for Gradio 6.x SSR compatibility (HF Spaces).
-    # In SSR mode Node.js renders components server-side; these params are only correctly
-    # threaded through when passed at launch time, not at Blocks() construction time.
     kwargs = dict(
         favicon_path=_FAVICON,
         css=APP_CSS,
