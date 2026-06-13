@@ -155,6 +155,18 @@ def _loading_html(message: str) -> str:
     return f'<div class="wg-transcript"><div class="wg-empty">{html.escape(message)}</div></div>'
 
 
+def _format_warmup_error(exc: Exception) -> str:
+    from witgym.hub_data import get_startup_status
+
+    lines = [str(exc)]
+    status = get_startup_status()
+    if status:
+        lines.append("")
+        lines.append("Diagnostics:")
+        lines.extend(f"• {entry}" for entry in status)
+    return "\n".join(lines)
+
+
 def _bg_warmup():
     """Preload embedder/index/model in background — keeps submit queue free."""
     global _warmup_error
@@ -166,7 +178,7 @@ def _bg_warmup():
         _get_shared()
     except Exception as e:
         logger.exception("Background warmup failed")
-        _warmup_error = str(e)
+        _warmup_error = _format_warmup_error(e)
     finally:
         _warmup_done.set()
 

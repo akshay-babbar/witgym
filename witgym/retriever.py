@@ -22,27 +22,25 @@ def load_index(index_path: str = config.INDEX_PATH) -> dict:
     if _index_cache is not None:
         return _index_cache
 
+    from witgym.hub_data import clear_startup_status, materialize_hub_transcripts, try_ensure_artifact
+
+    clear_startup_status()
+
     path = index_path
     if path.endswith(".json") and not os.path.exists(path):
         npz_fallback = path.removesuffix(".json") + ".npz"
         if os.path.exists(npz_fallback):
             path = npz_fallback
 
-    from witgym.hub_data import materialize_hub_transcripts
-
-    materialize_hub_transcripts()
-
-    if not os.path.exists(path) and config.WITGYM_DATA_REPO:
-        from witgym.hub_data import ensure_artifact
-
-        try:
-            path = str(ensure_artifact("index.npz"))
-        except FileNotFoundError:
-            pass
+    if not os.path.exists(path):
+        hub_index = try_ensure_artifact("index.npz")
+        if hub_index is not None:
+            path = str(hub_index)
 
     if not os.path.exists(path):
         transcript_dir = Path(config.TRANSCRIPT_DIR)
         if transcript_dir.is_dir() and any(transcript_dir.glob("*.txt")):
+            materialize_hub_transcripts()
             from witgym.indexer import build_index
 
             build_path = path if path.endswith(".npz") else config.INDEX_PATH

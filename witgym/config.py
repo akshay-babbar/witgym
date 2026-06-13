@@ -57,7 +57,11 @@ CLICHE_PENALTY_TOKENS = 6   # Penalise first N tokens of the obvious response
 
 # HuggingFace auth + inference backend
 HF_TOKEN = os.getenv("HF_TOKEN", "")
-WITGYM_DATA_REPO = os.getenv("WITGYM_DATA_REPO", "")
+# Org dataset on Spaces; override via env for local dev (e.g. akshay4/witgym-data)
+WITGYM_DATA_REPO = os.getenv(
+    "WITGYM_DATA_REPO",
+    "build-small-hackathon/witgym-data" if os.getenv("SPACE_ID") else "",
+)
 # "local" = Transformers on device; "hf_api" = Inference Providers (Spaces default)
 LLM_BACKEND = os.getenv("LLM_BACKEND", "local")
 # Qwen3.5-9B thinking-mode toggle requires Together; "auto" often 400s on extra_body

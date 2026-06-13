@@ -43,28 +43,32 @@ export LLM_BACKEND=hf_api
 python app.py
 ```
 
-## Hugging Face Space secrets
+## Hugging Face Space secrets (runtime)
+
+Set these on the Space at [build-small-hackathon/WitGym](https://huggingface.co/spaces/build-small-hackathon/WitGym/settings) — **not** in GitHub. A green deploy only syncs code; the app still needs runtime auth.
 
 | Secret | Value |
 |--------|--------|
-| `HF_TOKEN` | Your Hugging Face access token |
+| `HF_TOKEN` | Write token with read access to the data dataset below |
 | `LLM_BACKEND` | `hf_api` (recommended on Spaces) |
-| `WITGYM_DATA_REPO` | Private dataset repo, e.g. `akshay4/witgym-data` |
+| `WITGYM_DATA_REPO` | `build-small-hackathon/witgym-data` (default on Spaces if unset) |
 
 Optional: `HF_INFERENCE_PROVIDER` (defaults to `together` for Qwen3.5-9B — required for `enable_thinking: false`), `WITGYM_INDEX_PATH`.
 
+Do **not** set `WITGYM_SKIP_HUB` on the Space.
+
 ## Large data on Hugging Face Hub
 
-Files over 1 MB (`office_generated.txt`, `index.npz`) live in a **private dataset repo**, not in git. The app fetches them at startup via `hf_hub_download`.
+Files over 1 MB (`office_generated.txt`, `index.npz`) live in a **private org dataset**, not in git. The app tries `index.npz` first at startup; if Hub auth fails, it falls back to rebuilding from bundled transcripts.
 
-**One-time setup** (create private dataset `witgym-data`, then upload):
+**One-time setup** (create private dataset `build-small-hackathon/witgym-data`, then upload):
 
 ```bash
-hf upload akshay4/witgym-data \
+hf upload build-small-hackathon/witgym-data \
   data/transcripts/office_generated.txt office_generated.txt \
   --repo-type dataset --private
 
-hf upload akshay4/witgym-data \
+hf upload build-small-hackathon/witgym-data \
   data/index.npz index.npz \
   --repo-type dataset
 ```
@@ -75,7 +79,14 @@ hf upload akshay4/witgym-data \
 
 ## Deploy (GitHub → Space)
 
-Pushes to `main` sync to [build-small-hackathon/WitGym](https://huggingface.co/spaces/build-small-hackathon/WitGym) via `.github/workflows/sync-to-hub.yml`. Add `HF_TOKEN` as a GitHub repository secret.
+Pushes to `main` sync code to the Space via [`.github/workflows/sync-to-hub.yml`](.github/workflows/sync-to-hub.yml).
+
+| Where | Secret | Purpose |
+|-------|--------|---------|
+| GitHub repo secrets | `HF_TOKEN` | CI upload to Space only |
+| Space secrets | `HF_TOKEN`, `WITGYM_DATA_REPO`, `LLM_BACKEND` | Runtime Hub API + dataset + inference |
+
+These are **two different** `HF_TOKEN` placements. Configuring GitHub does not configure the Space runtime.
 
 ## Architecture
 
