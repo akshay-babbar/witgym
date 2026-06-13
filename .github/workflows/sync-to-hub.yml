@@ -8,11 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          lfs: true
 
-      - name: Push to Hugging Face Space
+      - name: Upload to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
@@ -21,6 +18,10 @@ jobs:
             echo "::error::HF_TOKEN secret is empty. Add a Write token at https://huggingface.co/settings/tokens"
             exit 1
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git push "https://akshay4:${HF_TOKEN}@huggingface.co/spaces/build-small-hackathon/WitGym" HEAD:main --force
+          pip install -q "huggingface_hub>=0.22"
+          hf upload build-small-hackathon/WitGym . . \
+            --repo-type space \
+            --token "$HF_TOKEN" \
+            --exclude=".git*" \
+            --exclude=".github*" \
+            --delete="*"
