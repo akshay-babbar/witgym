@@ -2,12 +2,12 @@
 
 Implements Principles 4, 5, and 6 from the spec.
 """
-from typing import List, Set
+from typing import Iterator, List, Set
 from collections import Counter
 import re as _re
 from loguru import logger
 from transformers import LogitsProcessorList, NoBadWordsLogitsProcessor
-from witgym.model import generate_text, ClichePenaltyProcessor
+from witgym.model import generate_text, generate_text_stream, ClichePenaltyProcessor, _strip_thinking
 from witgym import config
 from witgym.schemas import (
     ComedyMetadata, TranscriptScene, CandidateResponse,
@@ -252,6 +252,111 @@ def generate_candidates(
     return candidates
 
 
+def generate_candidates_stream(
+    user_input: str,
+    metadata: ComedyMetadata,
+    scenes: List[TranscriptScene],
+    model,
+    tokenizer,
+    context_str: str,
+    personas_to_run: List[str] = None,
+) -> Iterator[tuple[str, object]]:
+    """Stream persona drafts. Yields (event, payload) tuples for engine/UI."""
+    scenes_block = _build_scenes_block(scenes)
+    active_personas = {
+        name: instr for name, instr in PERSONA_INSTRUCTIONS.items()
+        if personas_to_run is None or name in personas_to_run
+    }
+
+    processors = None
+    cliche_processor = None
+    if config.LLM_BACKEND == "local" and tokenizer is not None:
+        cliche_processor = ClichePenaltyProcessor(metadata.obvious_response, tokenizer)
+        processors = LogitsProcessorList([cliche_processor])
+        if config.ENABLE_BAD_WORD_GUARD:
+            bad_words_ids = [
+                tokenizer.encode(phrase, add_special_tokens=False)
+                for phrase in config.BAD_WORD_PHRASES
+            ]
+            processors.append(NoBadWordsLogitsProcessor(bad_words_ids, eos_token_id=tokenizer.eos_token_id))
+
+    candidates: List[CandidateResponse] = []
+    ngram_n = config.OVERLAP_NGRAM_SIZE
+    last_raw = None
+    last_persona = None
+
+    for persona_name, persona_instruction in active_personas.items():
+        prompt = GENERATION_PROMPT.format(
+            user_input=user_input,
+            surface=metadata.surface,
+            subtext=metadata.subtext,
+            archetype=metadata.archetype.value,
+            archetype_confidence=metadata.archetype_confidence,
+            tension_type=metadata.tension_type.value,
+            power_dynamic=metadata.power_dynamic,
+            speaker_strategy=metadata.speaker_strategy or "none",
+            connector=metadata.connector or "none",
+            scenes_block=scenes_block,
+            persona_name=persona_name.upper(),
+            persona_instruction=persona_instruction,
+            obvious_response=metadata.obvious_response,
+            context_str=context_str or "(no prior context)",
+        )
+
+        yield ("candidate_start", persona_name)
+        raw_parts: List[str] = []
+        for token in generate_text_stream(prompt, model, tokenizer, config_type="generate", logits_processors=processors):
+            raw_parts.append(token)
+            yield ("candidate_token", persona_name, token)
+
+        raw = _strip_thinking("".join(raw_parts))
+        last_raw, last_persona = raw, persona_name
+        if any(phrase in raw for phrase in config.BAD_WORD_PHRASES):
+            logger.warning(f"[{persona_name}] leaked routing label — dropping candidate")
+            yield ("candidate_done", None)
+            continue
+        if config.ENABLE_OVERLAP_GUARD and _copies_retrieved_phrase(raw, scenes, ngram_n):
+            logger.warning(f"[{persona_name}] copies precedent phrasing — dropping candidate")
+            yield ("candidate_done", None)
+            continue
+
+        logger.info(f"[{persona_name}] → {raw[:80]}...")
+        candidate = CandidateResponse(
+            persona=persona_name,
+            text=raw.strip(),
+            violation_type=f"{metadata.archetype.value} via {persona_name} lens",
+        )
+        candidates.append(candidate)
+        yield ("candidate_done", candidate)
+
+        _STOP_WORDS = {
+            "the", "a", "an", "is", "was", "i", "you", "it", "in", "of",
+            "to", "and", "that", "this", "they", "their", "are", "be",
+            "have", "has", "but", "not", "or", "at", "by", "we", "he", "she",
+        }
+        words = [
+            w.lower() for w in _re.findall(r"\b\w+\b", raw)
+            if w.lower() not in _STOP_WORDS and len(w) > 3
+        ]
+        if words and cliche_processor is not None and tokenizer is not None:
+            top_words = [w for w, _ in Counter(words).most_common(8)]
+            for word in top_words:
+                extra_ids = tokenizer.encode(word, add_special_tokens=False)
+                cliche_processor.penalty_ids.update(extra_ids[:2])
+
+    if not candidates and last_raw:
+        logger.warning(f"All candidates dropped — keeping last line from {last_persona}")
+        candidate = CandidateResponse(
+            persona=last_persona,
+            text=last_raw.strip(),
+            violation_type=f"{metadata.archetype.value} via {last_persona} lens",
+        )
+        candidates.append(candidate)
+        yield ("candidate_done", candidate)
+
+    yield ("candidates_complete", candidates)
+
+
 RANK_PROMPT = """\
 You are judging {n} comedy responses to: "{user_input}"
 Connector word (has two simultaneous readings in the input): "{connector}"
@@ -414,4 +519,46 @@ def compress_winner(winner: str, model, tokenizer) -> str:
 
     logger.info(f"Compressed: {len(winner.split())}w → {len(compressed.split())}w | '{compressed}'")
     return compressed
+
+
+def compress_winner_stream(winner: str, model, tokenizer) -> Iterator[tuple[str, str]]:
+    """Stream compress pass tokens, or yield skip when already tight."""
+    if len(winner.split()) <= 18:
+        yield ("skip", winner)
+        return
+
+    prompt = _COMPRESS_PROMPT.format(winner=winner)
+    yield ("start", winner)
+    parts: List[str] = []
+    for token in generate_text_stream(prompt, model, tokenizer, config_type="extract"):
+        parts.append(token)
+        yield ("token", token)
+    compressed = _strip_thinking("".join(parts)).strip().strip('"').strip("'")
+
+    _FRAGMENT_STARTS = (
+        "but ", "and ", "or ", "which ", "that ", "because ",
+        "while ", "since ", "although ", "if ", "though ",
+    )
+    if len(compressed.split()) < 4 or len(compressed.split()) >= len(winner.split()):
+        logger.debug("Compression rejected (collapsed/expanded). Keeping original.")
+        yield ("done", winner)
+        return
+    if compressed.lower().startswith(_FRAGMENT_STARTS):
+        logger.debug(f"Compression rejected (fragment start: '{compressed[:20]}'). Keeping original.")
+        yield ("done", winner)
+        return
+
+    _FUNCTION_WORDS = {
+        "a", "an", "the",
+        "to", "of", "for", "in", "on", "at", "with", "as", "by", "from", "into",
+        "like", "than", "then", "that", "which", "because", "until", "while", "since",
+    }
+    words = [w.lower() for w in _re.findall(r"\b\w+\b", compressed)]
+    if len(words) >= 8 and not any(w in _FUNCTION_WORDS for w in words):
+        logger.debug("Compression rejected (telegraphic/no function words). Keeping original.")
+        yield ("done", winner)
+        return
+
+    logger.info(f"Compressed: {len(winner.split())}w → {len(compressed.split())}w | '{compressed}'")
+    yield ("done", compressed)
 

@@ -2,11 +2,14 @@
 import re
 import torch
 import gc
+from threading import Thread
+from typing import Iterator
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     LogitsProcessor,
     LogitsProcessorList,
+    TextIteratorStreamer,
 )
 from loguru import logger
 from witgym import config
@@ -142,20 +145,7 @@ def _generate_via_hf_api(prompt: str, config_type: str) -> str:
     """Route generation through Hugging Face Inference Providers."""
     client = _get_inference_client()
     messages = [{"role": "user", "content": prompt}]
-
-    if config_type == "extract":
-        kwargs = {"max_tokens": config.EXTRACT_MAX_NEW_TOKENS, "temperature": 0.2}
-    elif config_type == "generate":
-        kwargs = {
-            "max_tokens": config.GENERATE_MAX_NEW_TOKENS,
-            "temperature": config.GENERATE_TEMP,
-            "top_p": 0.95,
-        }
-    elif config_type == "rank":
-        kwargs = {"max_tokens": 10, "temperature": 0.1}
-    else:
-        raise ValueError(f"Unknown config_type: {config_type}")
-
+    kwargs = _generation_kwargs(config_type)
     extra = _hf_api_extra_body()
     try:
         output = client.chat_completion(messages, **kwargs, extra_body=extra)
@@ -168,6 +158,98 @@ def _generate_via_hf_api(prompt: str, config_type: str) -> str:
     if not raw:
         logger.warning(f"HF API returned empty text (config_type={config_type})")
     return raw
+
+
+def _generation_kwargs(config_type: str) -> dict:
+    if config_type == "extract":
+        return {"max_tokens": config.EXTRACT_MAX_NEW_TOKENS, "temperature": 0.2}
+    if config_type == "generate":
+        return {
+            "max_tokens": config.GENERATE_MAX_NEW_TOKENS,
+            "temperature": config.GENERATE_TEMP,
+            "top_p": 0.95,
+        }
+    if config_type == "rank":
+        return {"max_tokens": 10, "temperature": 0.1}
+    raise ValueError(f"Unknown config_type: {config_type}")
+
+
+def _local_generation_kwargs(config_type: str) -> dict:
+    if config_type == "extract":
+        return dict(do_sample=False, max_new_tokens=config.EXTRACT_MAX_NEW_TOKENS)
+    if config_type == "generate":
+        return dict(
+            temperature=config.GENERATE_TEMP,
+            do_sample=True,
+            min_p=config.GENERATE_MIN_P,
+            max_new_tokens=config.GENERATE_MAX_NEW_TOKENS,
+        )
+    if config_type == "rank":
+        return dict(do_sample=False, max_new_tokens=10)
+    raise ValueError(f"Unknown config_type: {config_type}")
+
+
+def _stream_hf_api_tokens(prompt: str, config_type: str) -> Iterator[str]:
+    client = _get_inference_client()
+    messages = [{"role": "user", "content": prompt}]
+    kwargs = _generation_kwargs(config_type)
+    extra = _hf_api_extra_body()
+    try:
+        stream = client.chat_completion(messages, stream=True, **kwargs, extra_body=extra)
+    except Exception as e:
+        logger.warning(f"HF API stream extra_body rejected ({e}); retrying without thinking toggle")
+        stream = client.chat_completion(messages, stream=True, **kwargs)
+
+    for chunk in stream:
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta
+        content = getattr(delta, "content", None) if delta else None
+        if content:
+            yield content
+
+
+def generate_text_stream(
+    prompt: str,
+    model,
+    tokenizer,
+    config_type: str = "generate",
+    logits_processors: LogitsProcessorList = None,
+) -> Iterator[str]:
+    """Token stream for generate/compress paths. Extract/rank stay non-streaming."""
+    if config_type not in ("generate", "extract"):
+        raise ValueError(f"Streaming not supported for config_type={config_type}")
+
+    if config.LLM_BACKEND == "hf_api":
+        yield from _stream_hf_api_tokens(prompt, config_type)
+        return
+
+    messages = [{"role": "user", "content": prompt}]
+    text = _apply_chat_template_no_think(tokenizer, messages)
+    inputs = tokenizer(text, return_tensors="pt").to(config.DEVICE)
+    gen_kwargs = _local_generation_kwargs(config_type)
+    streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
+
+    def _run_generate():
+        with torch.no_grad():
+            model.generate(
+                **inputs,
+                streamer=streamer,
+                logits_processor=logits_processors or LogitsProcessorList(),
+                pad_token_id=tokenizer.eos_token_id,
+                **gen_kwargs,
+            )
+
+    thread = Thread(target=_run_generate, daemon=True)
+    thread.start()
+    for token in streamer:
+        if token:
+            yield token
+    thread.join()
+
+    if config.DEVICE == "mps":
+        torch.mps.empty_cache()
+        gc.collect()
 
 
 class ClichePenaltyProcessor(LogitsProcessor):
@@ -204,26 +286,7 @@ def generate_text(
     text = _apply_chat_template_no_think(tokenizer, messages)
     inputs = tokenizer(text, return_tensors="pt").to(config.DEVICE)
 
-    if config_type == "extract":
-        # Greedy — temperature must NOT be set when do_sample=False
-        gen_kwargs = dict(
-            do_sample=False,
-            max_new_tokens=config.EXTRACT_MAX_NEW_TOKENS,
-        )
-    elif config_type == "generate":
-        gen_kwargs = dict(
-            temperature=config.GENERATE_TEMP,
-            do_sample=True,
-            min_p=config.GENERATE_MIN_P,
-            max_new_tokens=config.GENERATE_MAX_NEW_TOKENS,
-        )
-    elif config_type == "rank":
-        gen_kwargs = dict(
-            do_sample=False,
-            max_new_tokens=10,
-        )
-    else:
-        raise ValueError(f"Unknown config_type: {config_type}")
+    gen_kwargs = _local_generation_kwargs(config_type)
 
     with torch.no_grad():
         output_ids = model.generate(

@@ -1,8 +1,9 @@
 """Format WitGymResponse traces for Gradio — styled HTML transcript."""
 import html
 import json
+from dataclasses import dataclass, field
 from typing import List, Tuple, Any, Optional
-from witgym.schemas import WitGymResponse
+from witgym.schemas import WitGymResponse, PipelineEvent, ComedyMetadata, CandidateResponse, TranscriptScene
 from witgym.avatars import char_avatar_url
 
 # Maps character first-name or full-name → title string
@@ -121,6 +122,207 @@ def _debug_panels_html(result: WitGymResponse) -> str:
         ]
 
     return "".join(parts)
+
+
+@dataclass
+class StreamingTurnState:
+    user_input: str
+    metadata: Optional[ComedyMetadata] = None
+    scenes: List[TranscriptScene] = field(default_factory=list)
+    candidates: List[CandidateResponse] = field(default_factory=list)
+    selected: str = ""
+    winning_persona: Optional[str] = None
+    route: str = "humour"
+    active_persona: Optional[str] = None
+    active_candidate_text: str = ""
+    streaming_final: bool = False
+    final_text: str = ""
+
+
+def apply_stream_event(state: StreamingTurnState, event: PipelineEvent) -> None:
+    if event.phase == "smalltalk" and event.response:
+        state.route = "smalltalk"
+        state.selected = event.response.selected
+        return
+    if event.metadata is not None:
+        state.metadata = event.metadata
+    if event.scenes is not None:
+        state.scenes = event.scenes
+    if event.candidates is not None:
+        state.candidates = event.candidates
+    if event.phase == "candidate_start":
+        state.active_persona = event.persona
+        state.active_candidate_text = ""
+    elif event.phase == "candidate_token":
+        state.active_persona = event.persona
+        state.active_candidate_text = event.partial_text
+    elif event.phase == "candidate_done":
+        state.active_persona = None
+        state.active_candidate_text = ""
+    elif event.phase == "ranked":
+        state.selected = event.selected or ""
+        state.winning_persona = event.winning_persona
+        state.streaming_final = False
+        state.final_text = state.selected
+    elif event.phase == "final_start":
+        state.streaming_final = True
+        state.final_text = event.partial_text or state.selected
+    elif event.phase == "final_token":
+        state.streaming_final = True
+        state.final_text = event.partial_text
+    elif event.phase == "done" and event.response:
+        state.final_text = event.response.selected
+        state.selected = event.response.selected
+        state.candidates = event.response.candidates
+        state.streaming_final = False
+
+
+def _streaming_debug_panels_html(state: StreamingTurnState, selected_text: str) -> str:
+    if state.metadata is None:
+        return ""
+    meta = state.metadata
+    parts = [
+        '<div class="wg-panel wg-panel-yellow">',
+        '<div class="wg-panel-title">Pass 1 — Extracted Metadata</div>',
+        '<table class="wg-meta">',
+        f'<tr><td class="wg-dim">Archetype</td><td class="wg-cyan">{_esc(meta.archetype.value)}</td></tr>',
+        f'<tr><td class="wg-dim">Tension</td><td class="wg-cyan">{_esc(meta.tension_type.value)}</td></tr>',
+        f'<tr><td class="wg-dim">Distance</td><td class="wg-cyan">{_esc(meta.violation_distance.value)}</td></tr>',
+        f'<tr><td class="wg-dim">Twist potential</td><td class="wg-cyan">{meta.twist_potential}/10</td></tr>',
+        f'<tr><td class="wg-dim">Surface</td><td class="wg-cyan">{_esc(meta.surface)}</td></tr>',
+        f'<tr><td class="wg-dim">Subtext</td><td class="wg-cyan">{_esc(meta.subtext)}</td></tr>',
+        f'<tr><td class="wg-dim">Power dynamic</td><td class="wg-cyan">{_esc(meta.power_dynamic)}</td></tr>',
+        f'<tr><td class="wg-dim">Connector</td><td class="wg-cyan">{_esc(meta.connector or "none")}</td></tr>',
+        f'<tr><td class="wg-dim">Suppressed cliché</td><td class="wg-dim-italic">{_esc(meta.obvious_response)}</td></tr>',
+        '</table></div>',
+    ]
+
+    for i, scene in enumerate(state.scenes, 1):
+        char = scene.character
+        av_url = _avatar_url(char)
+        title = _char_title(char)
+        show = scene.show or "The Office"
+        onclick = (
+            f"wgOpenScene({_jstr(char)},{_jstr(show)},{_jstr(scene.setup)},"
+            f"{_jstr(scene.response)},{_jstr(scene.why_it_works)},{_jstr(av_url)},{_jstr(title)})"
+        )
+        parts += [
+            f'<div class="wg-panel wg-panel-blue wg-clickable" onclick="{_esc(onclick)}" '
+            f'title="Click to see {_esc(char)}\'s full scene">',
+            f'<div class="wg-panel-title">Retrieved Scene {i} — {_esc(show)} · click to expand <span class="wg-scene-arrow">↗</span></div>',
+            f'<div><span class="wg-bold">{_esc(char)}</span> <span class="wg-dim">· {_esc(title)}</span></div>',
+            f'<div><span class="wg-dim">Setup:</span> {_esc(scene.setup)}</div>',
+            f'<div><span class="wg-dim">Response:</span> {_esc(scene.response)}</div>',
+            '</div>',
+        ]
+
+    for c in state.candidates:
+        selected = c.text == selected_text
+        cls = "wg-panel-green" if selected else "wg-panel-dim"
+        title = "✓ Selected candidate" if selected else f"Candidate — {c.persona}"
+        parts += [
+            f'<div class="wg-panel {cls}">',
+            f'<div class="wg-panel-title">{_esc(title)}</div>',
+            f'<div>{_esc(c.text)}</div>',
+            '</div>',
+        ]
+
+    if state.active_persona and state.active_candidate_text:
+        parts += [
+            '<div class="wg-panel wg-panel-dim">',
+            f'<div class="wg-panel-title">Drafting — {_esc(state.active_persona)}</div>',
+            f'<div>{_esc(state.active_candidate_text)}</div>',
+            '</div>',
+        ]
+
+    return "".join(parts)
+
+
+def format_streaming_turn_html(state: StreamingTurnState, show_debug: bool = True) -> str:
+    parts = [
+        '<div class="wg-turn wg-turn--thinking">',
+        f'<div class="wg-user"><span class="wg-label">You</span> {_esc(state.user_input)}</div>',
+    ]
+
+    if state.route == "smalltalk" and state.selected:
+        parts += [
+            '<div class="wg-coach-reply wg-coach-reply--compact wg-coach-reply--new">',
+            '<div class="wg-coach-reply-header">Your humor coach</div>',
+            f'<div class="wg-coach-reply-body">{_esc(state.selected)}</div>',
+            '</div></div>',
+        ]
+        return "".join(parts)
+
+    if state.metadata is None:
+        parts += [
+            f'<div class="wg-thinking">{_THINKING_ICON}'
+            '<span class="wg-step-cycle">'
+            '<span>reading the room…</span>'
+            '<span>finding precedent…</span>'
+            '<span>drafting candidates…</span>'
+            '</span></div></div>',
+        ]
+        return "".join(parts)
+
+    collapsed_cls = "" if show_debug else " wg-collapsed"
+    chevron = "▼" if show_debug else "▶"
+    display_text = state.final_text or state.selected
+    persona_label = (
+        f' · <em class="wg-persona-label">{_esc(state.winning_persona)}</em>'
+        if state.winning_persona else ""
+    )
+
+    parts += [
+        _twist_meter_html(state.metadata.twist_potential),
+        '<div class="wg-debug-toggle">',
+        '<span class="wg-debug-toggle-line"></span>',
+        f'<span class="wg-debug-toggle-label">Coaching notes <span class="wg-debug-chevron">{chevron}</span></span>',
+        '<span class="wg-debug-toggle-line"></span>',
+        '</div>',
+        f'<div class="wg-debug-body{collapsed_cls}">',
+        _streaming_debug_panels_html(state, state.selected),
+        '</div>',
+    ]
+
+    if display_text:
+        polish = ' · <span class="wg-dim-italic">polishing…</span>' if state.streaming_final else ""
+        parts += [
+            '<div class="wg-coach-reply wg-coach-reply--new">',
+            f'<div class="wg-coach-reply-header">Your humor coach{persona_label}{polish}</div>',
+            f'<div class="wg-coach-reply-body">{_esc(display_text)}</div>',
+            '</div>',
+        ]
+    elif not state.active_persona:
+        parts += [
+            f'<div class="wg-thinking">{_THINKING_ICON}'
+            '<span>drafting candidates…</span></div>',
+        ]
+
+    parts.append('<div class="wg-rule"></div></div>')
+    return "".join(parts)
+
+
+def format_transcript_with_streaming(
+    traces: List[Tuple[str, Any]],
+    stream_state: Optional[StreamingTurnState],
+    show_debug: bool = True,
+    max_turns: int = 5,
+) -> str:
+    if not traces and stream_state is None:
+        return format_transcript_html([], show_debug=show_debug)
+    recent = traces[-max_turns:]
+    body = "".join(
+        format_trace_html(
+            r if isinstance(r, WitGymResponse) else WitGymResponse.model_validate(r),
+            user_input,
+            show_debug=show_debug,
+            is_last=False,
+        )
+        for user_input, r in recent
+    )
+    if stream_state is not None:
+        body += format_streaming_turn_html(stream_state, show_debug=show_debug)
+    return f'<div class="wg-transcript">{body}</div>{_PAGE_JS}'
 
 
 def _twist_meter_html(twist_potential: int) -> str:

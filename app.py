@@ -16,7 +16,13 @@ from loguru import logger
 
 from witgym.conversation import ConversationManager
 from witgym.engine import WitGymEngine, get_shared_resources
-from witgym.debug_render import format_transcript_html, thinking_turn_html
+from witgym.debug_render import (
+    format_transcript_html,
+    thinking_turn_html,
+    StreamingTurnState,
+    apply_stream_event,
+    format_transcript_with_streaming,
+)
 from witgym import config
 from witgym.avatars import char_avatar_url, char_avatar_svg
 
@@ -902,10 +908,34 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
 
     progress(0.05, desc="Warming up coach…")
     engine = WitGymEngine(resources=_get_shared(), conversation=session["conversation"])
-    progress(0.25, desc="Reading the room…")
+    stream_state = StreamingTurnState(user_input=user_input)
     try:
-        result = engine.respond(user_input)
-        progress(0.95, desc="Polishing the line…")
+        for event in engine.respond_stream(user_input):
+            apply_stream_event(stream_state, event)
+            if event.phase == "metadata":
+                progress(0.2, desc="Reading the room…")
+            elif event.phase == "scenes":
+                progress(0.35, desc="Finding precedent…")
+            elif event.phase == "candidate_start":
+                progress(0.5, desc=f"Drafting {event.persona}…")
+            elif event.phase == "ranked":
+                progress(0.85, desc="Picking the sharpest line…")
+            elif event.phase == "final_start":
+                progress(0.92, desc="Polishing the line…")
+            elif event.phase == "done" and event.response:
+                session["traces"].append((user_input, event.response))
+                session["traces"] = session["traces"][-5:]
+                yield (
+                    format_transcript_html(session["traces"], show_debug=show_debug),
+                    gr.update(value="", interactive=True),
+                    session,
+                )
+                return
+            yield (
+                format_transcript_with_streaming(session["traces"], stream_state, show_debug=show_debug),
+                gr.update(value="", interactive=False),
+                session,
+            )
     except Exception as e:
         logger.exception("Engine error")
         err = (
@@ -915,10 +945,6 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
         )
         yield format_transcript_html(session["traces"], append_html=err, show_debug=show_debug), gr.update(value="", interactive=True), session
         return
-
-    session["traces"].append((user_input, result))
-    session["traces"] = session["traces"][-5:]
-    yield format_transcript_html(session["traces"], show_debug=show_debug), gr.update(value="", interactive=True), session
 
 
 def clear_session(show_debug: bool):
