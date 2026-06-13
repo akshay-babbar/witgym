@@ -9,6 +9,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Export exact main tree
+        run: |
+          git archive HEAD | tar -x -C deploy
+          rm -rf deploy/.github
+
       - name: Upload to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -19,9 +24,42 @@ jobs:
             exit 1
           fi
           pip install -q "huggingface_hub>=0.22"
-          hf upload build-small-hackathon/WitGym . . \
+          hf upload build-small-hackathon/WitGym deploy . \
             --repo-type space \
             --token "$HF_TOKEN" \
-            --exclude=".git*" \
-            --exclude=".github*" \
             --delete="*"
+
+      - name: Verify Space matches main
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install -q "huggingface_hub>=0.22"
+          HF_TOKEN="$(printf '%s' "$HF_TOKEN" | tr -d '\n\r')"
+          python - <<'PY'
+          import os
+          import pathlib
+          from huggingface_hub import list_repo_tree
+
+          local = {
+              str(p).replace(os.sep, "/")
+              for p in pathlib.Path("deploy").rglob("*")
+              if p.is_file()
+          }
+          remote = {
+              f.path
+              for f in list_repo_tree(
+                  "build-small-hackathon/WitGym",
+                  repo_type="space",
+                  recursive=True,
+                  token=os.environ["HF_TOKEN"],
+              )
+              if f.path
+          }
+          missing = sorted(local - remote)
+          extra = sorted(remote - local)
+          if missing or extra:
+              print("Local-only:", missing)
+              print("Remote-only:", extra)
+              raise SystemExit("Space file tree does not match main export")
+          print(f"Verified {len(local)} files match main")
+          PY
