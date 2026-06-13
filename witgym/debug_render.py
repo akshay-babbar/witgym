@@ -44,6 +44,10 @@ def _esc(text: str) -> str:
     return html.escape(text or "")
 
 
+def _fmt_chip(value: str) -> str:
+    return value.replace("_", " ").upper()
+
+
 def _jstr(text: str) -> str:
     """JSON-encode a string for safe embedding in an HTML onclick attribute."""
     return json.dumps(text)
@@ -106,23 +110,39 @@ def thinking_turn_html(user_input: str) -> str:
     )
 
 
+def _meta_pass1_html(meta) -> str:
+    connector_chip = (
+        f'<div class="wg-chip-row">'
+        f'<span class="wg-chip-label">connector</span>'
+        f'<span class="wg-chip wg-chip-green">{_esc(meta.connector)}</span>'
+        f'</div>'
+    ) if meta.connector else ""
+    return (
+        '<div class="wg-panel wg-panel-yellow">'
+        '<div class="wg-panel-title">Pass 1 — Extracted Metadata</div>'
+        '<div class="wg-chip-row">'
+        f'<span class="wg-chip wg-chip-cyan">{_esc(_fmt_chip(meta.archetype.value))}</span>'
+        f'<span class="wg-chip wg-chip-purple">{_esc(_fmt_chip(meta.tension_type.value))}</span>'
+        f'<span class="wg-chip wg-chip-orange">{_esc(_fmt_chip(meta.violation_distance.value))}</span>'
+        '</div>'
+        f'{connector_chip}'
+        f'<div class="wg-avoided"><span class="wg-dim">avoided →</span> '
+        f'<span class="wg-dim-italic">{_esc(meta.obvious_response)}</span></div>'
+        '<div class="wg-capsule">'
+        '<div class="wg-capsule-head">SUBTEXT <span class="wg-cap-chev">▶</span></div>'
+        f'<div class="wg-capsule-body wg-collapsed">{_esc(meta.subtext)}</div>'
+        '</div>'
+        '<div class="wg-capsule">'
+        '<div class="wg-capsule-head">POWER DYNAMIC <span class="wg-cap-chev">▶</span></div>'
+        f'<div class="wg-capsule-body wg-collapsed">{_esc(meta.power_dynamic)}</div>'
+        '</div>'
+        '</div>'
+    )
+
+
 def _debug_panels_html(result: WitGymResponse) -> str:
     meta = result.metadata
-    parts = [
-        '<div class="wg-panel wg-panel-yellow">',
-        '<div class="wg-panel-title">Pass 1 — Extracted Metadata</div>',
-        '<table class="wg-meta">',
-        f'<tr><td class="wg-dim">Archetype</td><td class="wg-cyan">{_esc(meta.archetype.value)}</td></tr>',
-        f'<tr><td class="wg-dim">Tension</td><td class="wg-cyan">{_esc(meta.tension_type.value)}</td></tr>',
-        f'<tr><td class="wg-dim">Distance</td><td class="wg-cyan">{_esc(meta.violation_distance.value)}</td></tr>',
-        f'<tr><td class="wg-dim">Twist potential</td><td class="wg-cyan">{meta.twist_potential}/10</td></tr>',
-        f'<tr><td class="wg-dim">Surface</td><td class="wg-cyan">{_esc(meta.surface)}</td></tr>',
-        f'<tr><td class="wg-dim">Subtext</td><td class="wg-cyan">{_esc(meta.subtext)}</td></tr>',
-        f'<tr><td class="wg-dim">Power dynamic</td><td class="wg-cyan">{_esc(meta.power_dynamic)}</td></tr>',
-        f'<tr><td class="wg-dim">Connector</td><td class="wg-cyan">{_esc(meta.connector or "none")}</td></tr>',
-        f'<tr><td class="wg-dim">Suppressed cliché</td><td class="wg-dim-italic">{_esc(meta.obvious_response)}</td></tr>',
-        '</table></div>',
-    ]
+    parts = [_meta_pass1_html(meta)]
 
     for i, scene in enumerate(result.retrieved_scenes, 1):
         char    = scene.character
@@ -224,21 +244,7 @@ def _streaming_debug_panels_html(state: StreamingTurnState, selected_text: str) 
     if state.metadata is None:
         return ""
     meta = state.metadata
-    parts = [
-        '<div class="wg-panel wg-panel-yellow">',
-        '<div class="wg-panel-title">Pass 1 — Extracted Metadata</div>',
-        '<table class="wg-meta">',
-        f'<tr><td class="wg-dim">Archetype</td><td class="wg-cyan">{_esc(meta.archetype.value)}</td></tr>',
-        f'<tr><td class="wg-dim">Tension</td><td class="wg-cyan">{_esc(meta.tension_type.value)}</td></tr>',
-        f'<tr><td class="wg-dim">Distance</td><td class="wg-cyan">{_esc(meta.violation_distance.value)}</td></tr>',
-        f'<tr><td class="wg-dim">Twist potential</td><td class="wg-cyan">{meta.twist_potential}/10</td></tr>',
-        f'<tr><td class="wg-dim">Surface</td><td class="wg-cyan">{_esc(meta.surface)}</td></tr>',
-        f'<tr><td class="wg-dim">Subtext</td><td class="wg-cyan">{_esc(meta.subtext)}</td></tr>',
-        f'<tr><td class="wg-dim">Power dynamic</td><td class="wg-cyan">{_esc(meta.power_dynamic)}</td></tr>',
-        f'<tr><td class="wg-dim">Connector</td><td class="wg-cyan">{_esc(meta.connector or "none")}</td></tr>',
-        f'<tr><td class="wg-dim">Suppressed cliché</td><td class="wg-dim-italic">{_esc(meta.obvious_response)}</td></tr>',
-        '</table></div>',
-    ]
+    parts = [_meta_pass1_html(meta)]
 
     for i, scene in enumerate(state.scenes, 1):
         char = scene.character

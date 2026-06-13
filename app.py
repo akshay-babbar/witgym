@@ -120,14 +120,12 @@ body.wg-light-mode footer { background: #fffff8 !important; }
   position: relative;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  background: var(--wg-bg);
+  /* Dot grid lives in background shorthand — eliminates the ::before stacking context
+     that caused the wordmark to render behind the grid on HF Spaces SSR */
+  background:
+    radial-gradient(circle, rgba(245,197,24,0.18) 1px, transparent 2px) center/24px 24px,
+    var(--wg-bg);
   padding: 5rem 1rem 2.5rem; text-align: center;
-}
-.wg-hero::before {
-  content: ''; position: absolute; inset: 0;
-  /* Warm golden dot grid — 2px dots, chic and visible without overwhelming */
-  background-image: radial-gradient(circle, rgba(245,197,24,0.18) 1px, transparent 2px);
-  background-size: 24px 24px; pointer-events: none;
 }
 
 /* ● REC indicator — bigger, more visible flicker */
@@ -154,16 +152,16 @@ body.wg-light-mode footer { background: #fffff8 !important; }
   font-family: 'EB Garamond', Georgia, serif; font-style: italic;
   font-size: 0.78rem; letter-spacing: 0.22em;
   color: var(--wg-yellow); text-transform: uppercase;
-  margin-bottom: 1rem; z-index: 1;
+  margin-bottom: 1rem; position: relative; z-index: 1;
 }
 
 /* Mascot */
-.wg-mascot { margin-bottom: 0.5rem; z-index: 1;
+.wg-mascot { margin-bottom: 0.5rem; position: relative; z-index: 1;
   filter: drop-shadow(0 4px 20px rgba(45,106,79,0.3)); }
 
 /* WIT / GYM wordmark */
 .wg-wordmark { display: flex; flex-direction: column; align-items: center;
-  line-height: 0.88; margin-bottom: 0.9rem; z-index: 1; }
+  line-height: 0.88; margin-bottom: 0.9rem; position: relative; z-index: 1; }
 .wg-wordmark-wit, .wg-wordmark-gym {
   font-family: 'Bebas Neue', Impact, 'Arial Black', sans-serif;
   font-size: clamp(4.5rem, 18vw, 9rem); letter-spacing: 0.03em;
@@ -174,7 +172,7 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 .wg-hero-tagline {
   font-family: 'EB Garamond', Georgia, serif; font-style: italic;
   font-size: 1rem; color: rgba(240,240,240,0.7);
-  margin-bottom: 1.75rem; z-index: 1;
+  margin-bottom: 1.75rem; position: relative; z-index: 1;
 }
 
 .wg-start-hint {
@@ -183,18 +181,39 @@ body.wg-light-mode footer { background: #fffff8 !important; }
   background: transparent !important;
 }
 
-/* ── Scroll cue: animated down-arrow between tagline and CTA ────────────── */
+/* ── Scroll cue: clickable circle button between tagline and CTA ─────────── */
 .wg-scroll-cue {
-  display: flex; justify-content: center; align-items: center;
-  padding: 0.25rem 0 0.5rem; background: transparent !important;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  gap: 0.3rem; padding: 0.5rem 1rem 0.75rem; background: transparent !important;
+  cursor: pointer; transition: transform .22s ease;
+  position: relative; z-index: 1;
+}
+.wg-scroll-cue:hover { transform: translateY(5px); }
+.wg-scroll-circle {
+  width: 46px; height: 46px; border-radius: 50%;
+  border: 1.5px solid rgba(74,222,128,0.35);
+  background: rgba(45,106,79,0.08);
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .2s, box-shadow .2s;
+}
+.wg-scroll-cue:hover .wg-scroll-circle {
+  border-color: rgba(74,222,128,0.85);
+  box-shadow: 0 0 18px rgba(74,222,128,0.28);
 }
 .wg-scroll-arrow-svg {
   animation: wg-arrow-fall 1.9s ease-in-out infinite;
-  filter: drop-shadow(0 0 6px rgba(74,222,128,0.5));
+  filter: drop-shadow(0 0 4px rgba(74,222,128,0.45));
 }
+.wg-scroll-label {
+  font-family: 'EB Garamond', Georgia, serif; font-style: italic;
+  font-size: 0.68rem; color: rgba(74,222,128,0.45);
+  letter-spacing: 0.2em; text-transform: uppercase;
+  transition: color .2s;
+}
+.wg-scroll-cue:hover .wg-scroll-label { color: rgba(74,222,128,0.8); }
 @keyframes wg-arrow-fall {
   0%,100% { transform: translateY(0);   opacity: 0.55; }
-  50%      { transform: translateY(9px); opacity: 1;    }
+  50%      { transform: translateY(7px); opacity: 1;    }
 }
 
 /* ── Real Gradio START TRAINING button ──────────────────────────────────── */
@@ -475,6 +494,60 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 .wg-meta { border-collapse: collapse; width: 100%; }
 .wg-meta td { padding: 0.1rem 0.5rem 0.1rem 0; vertical-align: top; }
 .wg-rule { border-top: 1px solid var(--wg-border); margin: 0.75rem 0; }
+
+/* ── Metadata chips (dark-mode defaults) ────────────────────────────────── */
+.wg-chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.45rem 0 0.35rem; }
+.wg-chip {
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.69rem; letter-spacing: 0.1em;
+  padding: 0.18rem 0.55rem; border-radius: 20px; display: inline-block; line-height: 1.5;
+}
+.wg-chip-cyan   { background: #0d2d33; color: #67e8f9; border: 1px solid #164e63; }
+.wg-chip-purple { background: #1e1030; color: #c4b5fd; border: 1px solid #4c1d95; }
+.wg-chip-orange { background: #2d1a00; color: #fbbf24; border: 1px solid #92400e; }
+.wg-chip-green  { background: #0a2018; color: #4ade80; border: 1px solid #1a3d2b; }
+.wg-chip-label  { font-size: 0.68rem; color: var(--wg-muted); align-self: center; font-family: 'EB Garamond', serif; font-style: italic; }
+.wg-avoided {
+  font-size: 0.82rem; color: var(--wg-muted); margin: 0.3rem 0 0.45rem;
+  padding: 0.25rem 0; border-top: 1px dashed rgba(255,255,255,0.07);
+}
+/* Expandable capsules (dark-mode) */
+.wg-capsule {
+  border: 1px solid var(--wg-border); border-radius: 7px;
+  margin-top: 0.38rem; overflow: hidden;
+}
+.wg-capsule-head {
+  cursor: pointer; padding: 0.38rem 0.65rem;
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.69rem; letter-spacing: 0.1em;
+  color: #888; user-select: none;
+  display: flex; justify-content: space-between; align-items: center;
+  transition: color .15s, background .15s;
+}
+.wg-capsule-head:hover { color: var(--wg-white); background: rgba(255,255,255,0.04); }
+.wg-capsule-body {
+  padding: 0.5rem 0.65rem; font-size: 0.86rem;
+  color: rgba(240,240,240,0.88); line-height: 1.55;
+  border-top: 1px solid var(--wg-border); background: var(--wg-surf2);
+}
+.wg-capsule-body.wg-collapsed { display: none; }
+.wg-cap-chev { font-size: 0.6rem; transition: transform .18s; display: inline-block; }
+.wg-capsule--open .wg-cap-chev { transform: rotate(90deg); }
+
+/* ── Light-mode overrides for chips + capsules ──────────────────────────── */
+#wg-practice .wg-chip-cyan   { background: #ecfeff; color: #0e7490; border-color: #a5f3fc; }
+#wg-practice .wg-chip-purple { background: #f5f3ff; color: #7c3aed; border-color: #ddd6fe; }
+#wg-practice .wg-chip-orange { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+#wg-practice .wg-chip-green  { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+#wg-practice .wg-chip-label  { color: #9e9288; }
+#wg-practice .wg-avoided     { color: #9e9288; border-top-color: rgba(0,0,0,0.07); }
+#wg-practice .wg-capsule      { border-color: #e0d8cc; }
+#wg-practice .wg-capsule-head { color: #9e9288; }
+#wg-practice .wg-capsule-head:hover { color: #3d3429; background: rgba(0,0,0,0.025); }
+#wg-practice .wg-capsule-body { background: #faf9f6; color: #3d3429; border-top-color: #e0d8cc; }
+
+/* ── Light-mode overrides for mode badges ───────────────────────────────── */
+#wg-practice .wg-mode-banter { background: #dcfce7; color: #15803d; border-color: #86efac; }
+#wg-practice .wg-mode-wit    { background: #fef9c3; color: #92400e; border-color: #fde047; }
+#wg-practice .wg-mode-coach  { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
 .wg-dim { color: var(--wg-muted); }
 .wg-dim-italic { color: var(--wg-muted); font-style: italic; }
 .wg-cyan { color: #22d3ee; font-weight: 500; }
@@ -667,6 +740,23 @@ document.addEventListener('click', function(e) {
   if (ch) ch.textContent = collapsed ? '▶' : '▼';
 });
 
+/* Capsule expand/collapse */
+document.addEventListener('click', function(e) {
+  var head = e.target.closest('.wg-capsule-head');
+  if (!head) return;
+  var cap = head.closest('.wg-capsule');
+  var body = head.nextElementSibling;
+  if (body) body.classList.toggle('wg-collapsed');
+  if (cap)  cap.classList.toggle('wg-capsule--open');
+});
+
+/* Scroll-cue click → smooth scroll to CTA */
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.wg-scroll-cue')) return;
+  var btn = document.querySelector('#wg-start-btn');
+  if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
 /* Another take — cycle through pre-computed candidates */
 window.wgAnotherTake = function(btn) {
   var card = btn.closest('.wg-coach-reply');
@@ -687,28 +777,38 @@ window.wgAnotherTake = function(btn) {
 };
 
 /* Sound effects — Web Audio API, no external files */
+/* Office-vibe piano: 4-note ascending motif (D4→G4→A4→D5), triangle wave */
 window.wgPlayBell = function() {
   try {
     var ctx = new (window.AudioContext || window.webkitAudioContext)();
-    var o = ctx.createOscillator(), g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    o.type = 'sine'; o.frequency.setValueAtTime(880, ctx.currentTime);
-    o.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.25);
-    g.gain.setValueAtTime(0.12, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
-    o.start(); o.stop(ctx.currentTime + 0.7);
+    var notes = [294, 392, 440, 587];
+    var times = [0, 0.16, 0.30, 0.46];
+    var durs  = [0.14, 0.14, 0.14, 0.38];
+    notes.forEach(function(freq, i) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'triangle'; o.frequency.value = freq;
+      var t = ctx.currentTime + times[i];
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.085, t + 0.018);
+      g.gain.exponentialRampToValueAtTime(0.001, t + durs[i]);
+      o.start(t); o.stop(t + durs[i]);
+    });
   } catch(e) {}
 };
+/* Warm C-major chord (C4+E4+G4) on coach reply — affirming, piano-like */
 window.wgPlayClack = function() {
   try {
     var ctx = new (window.AudioContext || window.webkitAudioContext)();
-    var rate = ctx.sampleRate, len = Math.floor(rate * 0.04);
-    var buf = ctx.createBuffer(1, len, rate);
-    var d = buf.getChannelData(0);
-    for (var i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.exp(-i/(rate*0.006));
-    var src = ctx.createBufferSource(), g = ctx.createGain();
-    src.buffer = buf; g.gain.value = 0.06;
-    src.connect(g); g.connect(ctx.destination); src.start();
+    [262, 330, 392].forEach(function(freq) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'triangle'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0, ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0.052, ctx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+      o.start(); o.stop(ctx.currentTime + 0.55);
+    });
   } catch(e) {}
 };
 /* MutationObserver: play clack when a new coach reply is added */
@@ -850,14 +950,17 @@ def _coaching_panel_html() -> str:
 
 
 _SCROLL_CUE_HTML = (
-    '<div class="wg-scroll-cue" aria-hidden="true">'
-    '<svg class="wg-scroll-arrow-svg" viewBox="0 0 24 28" width="24" height="28" '
+    '<div class="wg-scroll-cue" role="button" tabindex="0" aria-label="Scroll to begin training">'
+    '<div class="wg-scroll-circle">'
+    '<svg class="wg-scroll-arrow-svg" viewBox="0 0 24 28" width="20" height="24" '
     'fill="none" xmlns="http://www.w3.org/2000/svg">'
-    '<line x1="12" y1="2" x2="12" y2="20" stroke="rgba(74,222,128,0.65)" '
-    'stroke-width="1.5" stroke-linecap="round"/>'
-    '<polyline points="5,13 12,22 19,13" fill="none" stroke="rgba(74,222,128,0.65)" '
-    'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>'
+    '<line x1="12" y1="2" x2="12" y2="20" stroke="rgba(74,222,128,0.75)" '
+    'stroke-width="1.8" stroke-linecap="round"/>'
+    '<polyline points="5,13 12,22 19,13" fill="none" stroke="rgba(74,222,128,0.75)" '
+    'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
     '</svg>'
+    '</div>'
+    '<span class="wg-scroll-label">begin</span>'
     '</div>'
 )
 
@@ -967,11 +1070,6 @@ def clear_session(show_debug: bool):
     return format_transcript_html([], show_debug=show_debug), gr.update(value="", interactive=True), _new_session()
 
 
-def toggle_debug(show_debug: bool, session):
-    traces = session.get("traces", []) if isinstance(session, dict) else []
-    return format_transcript_html(traces, show_debug=show_debug)
-
-
 def _theme():
     return (
         gr.themes.Base(
@@ -1041,11 +1139,6 @@ def build_ui():
                                 )
                                 clear_btn = gr.Button("New session", size="sm", variant="secondary", scale=1)
 
-                        with gr.Row():
-                            debug_toggle = gr.Checkbox(
-                                label="Show coaching notes (CBR-RAG debug panels)",
-                                value=True,   # ON by default
-                            )
 
                     with gr.Column(scale=1, elem_id="wg-sidebar"):
                         gr.HTML('<div class="wg-sidebar-label">Try a situation</div>')
@@ -1079,12 +1172,6 @@ def build_ui():
             fn=clear_session,
             inputs=[show_debug_state],
             outputs=[transcript, user_input, session_state],
-        )
-        debug_toggle.change(
-            fn=lambda v, s: (v, toggle_debug(v, s)),
-            inputs=[debug_toggle, session_state],
-            outputs=[show_debug_state, transcript],
-            queue=False,
         )
         demo.load(fn=_on_page_load, outputs=transcript, show_progress="hidden")
 
