@@ -1,7 +1,19 @@
 """Pydantic v2 schemas — Section 3 of the spec, verbatim."""
 from enum import Enum
-from typing import List, Optional
+from typing import List, Literal, Optional
 from pydantic import BaseModel
+
+PipelinePhase = Literal[
+    "metadata",
+    "scenes",
+    "candidate_start",
+    "candidate_token",
+    "candidate_done",
+    "ranked",
+    "final_start",
+    "final_token",
+    "done",
+]
 
 
 class ComedyArchetype(str, Enum):
@@ -65,6 +77,20 @@ class WitGymResponse(BaseModel):
     selected: str
     route: str = "humour"  # "smalltalk" | "humour"
     winning_persona: Optional[str] = None  # persona of the ranked winner (before compression)
+
+
+class PipelineEvent(BaseModel):
+    """Incremental pipeline update for Gradio streaming UI."""
+
+    phase: PipelinePhase | Literal["smalltalk"]
+    persona: Optional[str] = None
+    partial_text: str = ""
+    metadata: Optional[ComedyMetadata] = None
+    scenes: Optional[List[TranscriptScene]] = None
+    candidates: Optional[List[CandidateResponse]] = None
+    selected: Optional[str] = None
+    winning_persona: Optional[str] = None
+    response: Optional[WitGymResponse] = None
 
 
 # Fallback metadata when extraction fails
