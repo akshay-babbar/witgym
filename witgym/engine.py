@@ -145,6 +145,7 @@ class WitGymEngine:
 
         # RANK — Pick best candidate
         selected = rank_candidates(user_input, metadata, candidates, self.model, self.tokenizer)
+        winning_persona = next((c.persona for c in candidates if c.text == selected), None)
 
         # COMPRESS — Swartzwelder pass: generate loose, cut ruthless (skips if ≤12 words)
         selected = compress_winner(selected, self.model, self.tokenizer)
@@ -161,4 +162,5 @@ class WitGymEngine:
             candidates=candidates,
             selected=selected,
             route="humour",
+            winning_persona=winning_persona,
         )
