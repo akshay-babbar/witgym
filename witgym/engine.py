@@ -8,7 +8,7 @@ from typing import Iterator, Optional
 from loguru import logger
 from sentence_transformers import SentenceTransformer
 from witgym import config
-from witgym.model import load_model
+from witgym.model import load_model, generate_text
 from witgym.schemas import WitGymResponse, PipelineEvent, fallback_metadata
 from witgym.extractor import extract_comedy_metadata
 from witgym.retriever import load_index, retrieve_scenes
@@ -18,7 +18,8 @@ from witgym.generator import (
     compress_winner_stream,
 )
 from witgym.conversation import ConversationManager
-from witgym.router import classify_intent, SMALLTALK_REPLY
+from witgym.router import classify_intent
+from witgym.prompts import BANTER_PROMPT, COACHING_ASK_PROMPT, EXPLAIN_PROMPT
 
 _shared_resources = None
 
@@ -124,20 +125,92 @@ class WitGymEngine:
 
     def respond_stream(self, user_input: str) -> Iterator[PipelineEvent]:
         """Incremental pipeline for Gradio streaming UI."""
-        if classify_intent(user_input) == "smalltalk":
-            logger.info("Small-talk route — skipping humour pipeline")
-            metadata = fallback_metadata(user_input)
-            self.conversation.add_turn(user_input, SMALLTALK_REPLY, metadata)
-            response = WitGymResponse(
-                metadata=metadata,
-                retrieved_scenes=[],
-                candidates=[],
-                selected=SMALLTALK_REPLY,
-                route="smalltalk",
+        if self.conversation.coaching_state.get("awaiting"):
+            yield from self._run_wit_pipeline(
+                self._enriched_coaching_input(user_input),
+                route="coaching",
+                display_input=user_input,
+                include_explanation=True,
             )
-            yield PipelineEvent(phase="smalltalk", response=response)
-            yield PipelineEvent(phase="done", response=response)
             return
+
+        route = classify_intent(user_input, self.model, self.tokenizer)
+
+        if route == "banter":
+            yield from self._handle_banter(user_input)
+            return
+
+        if route == "coaching":
+            yield from self._handle_coaching_ask(user_input)
+            return
+
+        self.conversation.set_mode("quick_wit")
+        yield from self._run_wit_pipeline(user_input, route="quick_wit")
+
+    def _enriched_coaching_input(self, user_input: str) -> str:
+        original = self.conversation.coaching_state.get("original_input", user_input)
+        return f"{original}. Additional context: {user_input}"
+
+    def _handle_banter(self, user_input: str) -> Iterator[PipelineEvent]:
+        logger.info("Banter route — dynamic reply")
+        self.conversation.set_mode("banter")
+        reply = generate_text(
+            BANTER_PROMPT.format(user_input=user_input),
+            self.model,
+            self.tokenizer,
+            config_type="generate",
+        )
+        reply = _cap_two_sentences(reply.strip())
+        if not reply or reply.lstrip().startswith("1.") or "analyze user" in reply.lower():
+            reply = "I'm here for awkward moments and sharp comebacks — toss me a situation."
+        metadata = fallback_metadata(user_input)
+        self.conversation.add_turn(user_input, reply, metadata, mode="banter")
+        response = WitGymResponse(
+            metadata=metadata,
+            retrieved_scenes=[],
+            candidates=[],
+            selected=reply,
+            route="banter",
+        )
+        yield PipelineEvent(phase="banter", response=response)
+        yield PipelineEvent(phase="done", response=response)
+
+    def _handle_coaching_ask(self, user_input: str) -> Iterator[PipelineEvent]:
+        logger.info("Coaching route — Turn 1 clarifying question")
+        self.conversation.set_mode("coaching")
+        question = generate_text(
+            COACHING_ASK_PROMPT.format(user_input=user_input),
+            self.model,
+            self.tokenizer,
+            config_type="generate",
+        )
+        question = question.strip().split("\n")[0].strip() or "What did you actually say back?"
+        self.conversation.coaching_state = {
+            "awaiting": True,
+            "original_input": user_input,
+        }
+        metadata = fallback_metadata(user_input)
+        response = WitGymResponse(
+            metadata=metadata,
+            retrieved_scenes=[],
+            candidates=[],
+            selected=question,
+            route="coaching",
+            coaching_question=question,
+        )
+        yield PipelineEvent(phase="coaching_ask", partial_text=question, response=response)
+        yield PipelineEvent(phase="done", response=response)
+
+    def _run_wit_pipeline(
+        self,
+        user_input: str,
+        route: str = "quick_wit",
+        *,
+        display_input: Optional[str] = None,
+        include_explanation: bool = False,
+    ) -> Iterator[PipelineEvent]:
+        """CBR-RAG pipeline shared by quick_wit and coaching Turn 2."""
+        turn_user_input = display_input or user_input
 
         if self.conversation.needs_compression(self.tokenizer):
             self.conversation.compress(self.model, self.tokenizer)
@@ -148,13 +221,13 @@ class WitGymEngine:
         if metadata.twist_potential < 4:
             logger.info(f"twist_potential={metadata.twist_potential} < 4 — returning straight reply")
             selected = "Yeah, that tracks."
-            self.conversation.add_turn(user_input, selected, metadata)
+            self.conversation.add_turn(turn_user_input, selected, metadata, mode=route)
             response = WitGymResponse(
                 metadata=metadata,
                 retrieved_scenes=[],
                 candidates=[],
                 selected=selected,
-                route="humour",
+                route=route,
             )
             yield PipelineEvent(
                 phase="ranked",
@@ -289,14 +362,29 @@ class WitGymEngine:
                 compressed = payload
 
         selected = _cap_two_sentences(compressed)
-        self.conversation.add_turn(user_input, selected, metadata)
+        explanation = None
+        if include_explanation:
+            explanation = generate_text(
+                EXPLAIN_PROMPT.format(
+                    joke=selected,
+                    archetype=metadata.archetype.value,
+                    subtext=metadata.subtext,
+                ),
+                self.model,
+                self.tokenizer,
+                config_type="generate",
+            )
+            explanation = _cap_two_sentences(explanation.strip())
+
+        self.conversation.add_turn(turn_user_input, selected, metadata, mode=route)
 
         response = WitGymResponse(
             metadata=metadata,
             retrieved_scenes=scenes,
             candidates=candidates,
             selected=selected,
-            route="humour",
+            route=route,
             winning_persona=winning_persona,
+            explanation=explanation,
         )
         yield PipelineEvent(phase="done", response=response)

@@ -12,6 +12,8 @@ PipelinePhase = Literal[
     "ranked",
     "final_start",
     "final_token",
+    "banter",
+    "coaching_ask",
     "done",
 ]
 
@@ -75,8 +77,10 @@ class WitGymResponse(BaseModel):
     retrieved_scenes: List[TranscriptScene]
     candidates: List[CandidateResponse]
     selected: str
-    route: str = "humour"  # "smalltalk" | "humour"
+    route: str = "quick_wit"  # banter | quick_wit | coaching
     winning_persona: Optional[str] = None  # persona of the ranked winner (before compression)
+    coaching_question: Optional[str] = None
+    explanation: Optional[str] = None
 
 
 class PipelineEvent(BaseModel):

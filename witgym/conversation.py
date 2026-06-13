@@ -17,35 +17,50 @@ Return ONLY the summary paragraph."""
 
 class ConversationManager:
     def __init__(self):
-        self.history: List[Tuple[str, str]] = []   # (user, assistant)
+        self.history: List[Tuple[str, str]] = []
         self.used_archetypes: Set[ComedyArchetype] = set()
-        self._summary: str = ""  # Compressed summary of old turns
-        self._mechanisms: List[Tuple[str, str, str, str, str]] = []  # (user_input, subtext, archetype, tension, distance)
+        self._summary: str = ""
+        self.wit_mechanisms: List[Tuple[str, str, str, str, str]] = []
+        self.banter_log: List[Tuple[str, str]] = []
+        self.active_mode: str = "quick_wit"
+        self.coaching_state: dict = {}
 
-    def add_turn(self, user_input: str, response: str, metadata: ComedyMetadata):
+    def set_mode(self, mode: str):
+        """Track mode transitions. Reset coaching state when leaving coaching."""
+        if mode != self.active_mode and mode != "coaching":
+            self.coaching_state = {}
+        self.active_mode = mode
+
+    def add_turn(
+        self,
+        user_input: str,
+        response: str,
+        metadata: ComedyMetadata,
+        mode: str = "quick_wit",
+    ):
         self.history.append((user_input, response))
+        if mode == "banter":
+            self.banter_log.append((user_input, response))
+            return
+
         self.used_archetypes.add(metadata.archetype)
-        self._mechanisms.append((
+        self.wit_mechanisms.append((
             user_input,
             metadata.subtext,
             metadata.archetype.value,
             metadata.tension_type.value,
             metadata.violation_distance.value,
         ))
+        if mode == "coaching":
+            self.coaching_state = {}
 
     def get_context_string(self) -> str:
-        """Return the last N turns as mechanism-only context (archetype + tension).
-
-        Mechanism-only context for callbacks — no prior topic text. user_input and subtext are
-        stored in _mechanisms but intentionally not exposed here — topic contamination
-        makes turn-level evaluation unreliable and anchors the current joke to prior topics.
-        Re-enable richer output when multi-turn callback quality is validated.
-        """
-        recent = self._mechanisms[-config.KEEP_LAST_N_TURNS:]
+        """Mechanism-only context from quick_wit/coaching turns — banter excluded."""
+        recent = self.wit_mechanisms[-config.KEEP_LAST_N_TURNS:]
         lines = []
         if self._summary:
             lines.append(f"[Earlier conversation summary]: {self._summary}")
-        for i, (user_in, subtext, arch, tension, dist) in enumerate(recent, 1):
+        for i, (_user_in, _subtext, arch, tension, _dist) in enumerate(recent, 1):
             lines.append(f"Turn -{len(recent) - i + 1}: archetype={arch}, tension={tension}")
         return "\n".join(lines)
 
@@ -55,7 +70,7 @@ class ConversationManager:
         if tokenizer is not None:
             token_count = len(tokenizer.encode(full_text))
         else:
-            token_count = len(full_text) // 4  # chars-per-token estimate (hf_api path)
+            token_count = len(full_text) // 4
         threshold = int(config.CONTEXT_WINDOW * config.COMPRESSION_THRESHOLD)
         if token_count > threshold:
             logger.info(f"Context compression triggered: {token_count} tokens > {threshold}")
@@ -67,7 +82,7 @@ class ConversationManager:
         from witgym.model import generate_text
 
         if len(self.history) <= config.KEEP_LAST_N_TURNS:
-            return  # Nothing to compress
+            return
 
         old_turns = self.history[:-config.KEEP_LAST_N_TURNS]
         history_text = "\n".join(
@@ -76,6 +91,5 @@ class ConversationManager:
         prompt = COMPRESS_PROMPT.format(history_text=history_text)
         summary = generate_text(prompt, model, tokenizer, config_type="extract")
         self._summary = summary
-        # Keep only last N turns in memory
         self.history = self.history[-config.KEEP_LAST_N_TURNS:]
         logger.info(f"Compressed {len(old_turns)} turns into summary. kept_archetypes={len(self.used_archetypes)}")

@@ -110,41 +110,50 @@ def _apply_chat_template_no_think(tokenizer, messages: list) -> str:
 
 
 def _strip_thinking(text: str) -> str:
-    """Strip <think>...</think> blocks from model output (defence-in-depth)."""
-    # Remove explicit think tags
+    """Strip thinking blocks from model output (defence-in-depth)."""
     text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
-    # Remove "Thinking Process:" freeform blocks (Qwen3.5 fallback format)
     text = re.sub(r"Thinking Process:.*?(?=\{|\Z)", "", text, flags=re.DOTALL)
+    text = re.sub(
+        r"Here'?s a thinking process:.*?(?=\n\n|\Z)",
+        "",
+        text,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+    if " \n\n" in text:
+        text = text.split(" \n\n")[-1]
     return text.strip()
 
 
-def _extract_hf_message_text(message) -> str:
-    """Read assistant text from HF chat response.
+def _hf_api_user_content(prompt: str) -> str:
+    """Disable Qwen thinking mode when provider rejects chat_template_kwargs."""
+    if "Qwen3.5" in config.LLM_MODEL_ID or "Qwen3.6" in config.LLM_MODEL_ID:
+        stripped = prompt.lstrip()
+        if not stripped.startswith("/no_think"):
+            return f"/no_think\n{prompt}"
+    return prompt
 
-    Qwen3.5 on Together defaults to thinking mode: output lands in `reasoning`
-  with `content` null unless enable_thinking=False is set via chat_template_kwargs.
-    """
-    content = (message.content or "").strip()
-    if content:
-        return _strip_thinking(content)
-    reasoning = (getattr(message, "reasoning", None) or "").strip()
+
+def _extract_hf_message_text(message) -> str:
+    """Read assistant text from HF chat response."""
+    content = _strip_thinking((message.content or "").strip())
+    if content and not content.lower().startswith("here's a thinking"):
+        return content
+    reasoning = _strip_thinking((getattr(message, "reasoning", None) or "").strip())
     if reasoning:
-        stripped = _strip_thinking(reasoning)
-        if stripped:
-            return stripped
-    return ""
+        return reasoning
+    return content
 
 
 def _hf_api_extra_body() -> dict:
-    # Together / Qwen3.5: disable thinking so JSON and wit lines land in `content`
-    # https://www.together.ai/models/qwen3-5-9b
-    return {"chat_template_kwargs": {"enable_thinking": False}}
+    if "Qwen3.5" in config.LLM_MODEL_ID or "Qwen3.6" in config.LLM_MODEL_ID:
+        return {"chat_template_kwargs": {"enable_thinking": False}}
+    return {}
 
 
 def _generate_via_hf_api(prompt: str, config_type: str) -> str:
     """Route generation through Hugging Face Inference Providers."""
     client = _get_inference_client()
-    messages = [{"role": "user", "content": prompt}]
+    messages = [{"role": "user", "content": _hf_api_user_content(prompt)}]
     kwargs = _generation_kwargs(config_type)
     extra = _hf_api_extra_body()
     try:
@@ -170,7 +179,7 @@ def _generation_kwargs(config_type: str) -> dict:
             "top_p": 0.95,
         }
     if config_type == "rank":
-        return {"max_tokens": 10, "temperature": 0.1}
+        return {"max_tokens": 128, "temperature": 0.0}
     raise ValueError(f"Unknown config_type: {config_type}")
 
 
@@ -191,7 +200,7 @@ def _local_generation_kwargs(config_type: str) -> dict:
 
 def _stream_hf_api_tokens(prompt: str, config_type: str) -> Iterator[str]:
     client = _get_inference_client()
-    messages = [{"role": "user", "content": prompt}]
+    messages = [{"role": "user", "content": _hf_api_user_content(prompt)}]
     kwargs = _generation_kwargs(config_type)
     extra = _hf_api_extra_body()
     try:
