@@ -89,6 +89,7 @@ class WitGymEngine:
         resources: Optional[SharedResources] = None,
         conversation: Optional[ConversationManager] = None,
         last_wit_response: Optional[WitGymResponse] = None,
+        character: str = "AI",
     ):
         if resources is None:
             logger.info("Initialising WitGymEngine...")
@@ -97,6 +98,7 @@ class WitGymEngine:
             self._resources = resources
         self.conversation = conversation or ConversationManager()
         self._last_wit_response: Optional[WitGymResponse] = last_wit_response
+        self.character = character
         logger.success("WitGymEngine ready.")
 
     @property
@@ -331,6 +333,7 @@ class WitGymEngine:
             self.model, self.tokenizer,
             context_str,
             personas_to_run=personas_to_run,
+            character=self.character,
         ):
             event_type = item[0]
             payload = item[1] if len(item) == 2 else item[1:]

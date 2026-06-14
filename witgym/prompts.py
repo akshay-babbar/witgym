@@ -1,5 +1,67 @@
 """Mode-specific prompts for router, banter, and coaching."""
 
+# Character voice modifiers — injected into GENERATION_PROMPT when a character is selected.
+# These are short "voice filter" suggestions; they don't override the comedy engine logic.
+# Default "AI" has an empty modifier = existing behavior unchanged.
+CHARACTER_VOICE_MODIFIERS: dict[str, str] = {
+    "AI":      "",
+    "Michael": (
+        "CHARACTER VOICE FILTER — Michael Scott (comedian/overclaimer): "
+        "The line should feel like someone who desperately needs to be the funniest person in the room. "
+        "Overclaims. Accidentally reveals more than intended. Tries too hard and somehow lands it. "
+        "If there's a 'that's what she said' lurking — find it."
+    ),
+    "Dwight":  (
+        "CHARACTER VOICE FILTER — Dwight Schrute (contrarian/survivalist): "
+        "Hyper-literal. Frames the situation as a threat to be neutralised through superior preparation. "
+        "The line should feel like someone who has drilled for this exact scenario and is mildly disappointed it isn't worse. "
+        "Beet farm logic is always applicable."
+    ),
+    "Jim":     (
+        "CHARACTER VOICE FILTER — Jim Halpert (wit/deadpan): "
+        "Maximum economy of words. One raised eyebrow. Let the situation condemn itself. "
+        "The line should say less than it means. Understated. The humor lives in what is NOT said. "
+        "Never try too hard."
+    ),
+    "Pam":     (
+        "CHARACTER VOICE FILTER — Pam Beesly (empath/truth-teller): "
+        "Warm delivery, lethal accuracy. Find the kindest possible way to say the most devastating true thing. "
+        "The line should feel like gentle clarity that lands harder than expected."
+    ),
+    "Kevin":   (
+        "CHARACTER VOICE FILTER — Kevin Malone (literalist/accidental prophet): "
+        "Accidentally profound. Cut straight to the literal truth everyone else is too sophisticated to name. "
+        "Simple words. No abstraction. The insight is obvious in hindsight — that's the joke."
+    ),
+    "Andy":    (
+        "CHARACTER VOICE FILTER — Andy Bernard (overclaimer/performer): "
+        "Overclaims with total conviction. Performs competence so hard he convinces himself. "
+        "The line should feel like someone auditioning for the role of 'person handling this well'."
+    ),
+    "Stanley": (
+        "CHARACTER VOICE FILTER — Stanley Hudson (cynic/minimalist): "
+        "Maximum economy. Has seen this exact situation a hundred times. Is not impressed. "
+        "One sentence. No elaboration. Return to crossword. The exhaustion IS the punchline."
+    ),
+    "Angela":  (
+        "CHARACTER VOICE FILTER — Angela Martin (moralist/judge): "
+        "Moral authority, zero self-awareness. The line should police the situation's decorum "
+        "while accidentally revealing everything about the speaker's own rigidity. "
+        "Standards are non-negotiable. People are not."
+    ),
+    "Ryan":    (
+        "CHARACTER VOICE FILTER — Ryan Howard (hustler/strategist): "
+        "Dresses the observation up as strategy. The hustle is the product. "
+        "The line should make the mundane sound like a pivot. "
+        "Insecurity packaged as vision."
+    ),
+    "Kelly":   (
+        "CHARACTER VOICE FILTER — Kelly Kapoor (enthusiast/force of nature): "
+        "Overwhelming energy as force multiplier. The line should arrive with unstoppable momentum "
+        "that somehow makes a point. Volume is part of the argument."
+    ),
+}
+
 ROUTER_PROMPT = """\
 You are classifying a user's message to a humor coaching AI.
 

@@ -13,6 +13,7 @@ from witgym import config
 from witgym.schemas import (
     ComedyMetadata, TranscriptScene, CandidateResponse,
 )
+from witgym.prompts import CHARACTER_VOICE_MODIFIERS
 
 PERSONA_INSTRUCTIONS = {
     "cynic": (
@@ -112,7 +113,7 @@ CONSTRAINTS (ALL must be satisfied):
 
 CONVERSATION CONTEXT (last turns, for callbacks):
 {context_str}
-
+{character_modifier}
 Respond now with ONE or TWO sentences. Nothing else."""
 
 
@@ -169,13 +170,16 @@ def generate_candidates(
     tokenizer,
     context_str: str,
     personas_to_run: List[str] = None,
+    character: str = "AI",
 ) -> List[CandidateResponse]:
     """Generate persona candidates (1-3) with ClichePenalty applied.
 
     personas_to_run: optional subset of PERSONA_INSTRUCTIONS keys.
     None = all three (default). Engine gates this based on twist_potential.
+    character: Office character name for voice modifier, or "AI" for default.
     """
     scenes_block = _build_scenes_block(scenes)
+    character_modifier = CHARACTER_VOICE_MODIFIERS.get(character, "")
 
     active_personas = {
         name: instr for name, instr in PERSONA_INSTRUCTIONS.items()
@@ -214,6 +218,7 @@ def generate_candidates(
             persona_instruction=persona_instruction,
             obvious_response=metadata.obvious_response,
             context_str=context_str or "(no prior context)",
+            character_modifier=character_modifier,
         )
 
         raw = generate_text(prompt, model, tokenizer, config_type="generate", logits_processors=processors)
@@ -269,9 +274,11 @@ def generate_candidates_stream(
     tokenizer,
     context_str: str,
     personas_to_run: List[str] = None,
+    character: str = "AI",
 ) -> Iterator[tuple[str, object]]:
     """Stream persona drafts. Yields (event, payload) tuples for engine/UI."""
     scenes_block = _build_scenes_block(scenes)
+    character_modifier = CHARACTER_VOICE_MODIFIERS.get(character, "")
     active_personas = {
         name: instr for name, instr in PERSONA_INSTRUCTIONS.items()
         if personas_to_run is None or name in personas_to_run
@@ -310,6 +317,7 @@ def generate_candidates_stream(
             persona_instruction=persona_instruction,
             obvious_response=metadata.obvious_response,
             context_str=context_str or "(no prior context)",
+            character_modifier=character_modifier,
         )
 
         yield ("candidate_start", persona_name)
