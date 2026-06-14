@@ -126,9 +126,14 @@ class WitGymEngine:
     def respond_stream(self, user_input: str) -> Iterator[PipelineEvent]:
         """Incremental pipeline for Gradio streaming UI."""
         if self.conversation.coaching_state.get("awaiting"):
+            from witgym.router import _heuristic_route
+            if _heuristic_route(user_input) == "banter" or len(user_input.strip()) < 5:
+                self.conversation.coaching_state = {}
+                yield from self._handle_banter(user_input)
+                return
             original = self.conversation.coaching_state.get("original_input", user_input)
             yield from self._run_wit_pipeline(
-                self._enriched_coaching_input(user_input),
+                user_input,
                 route="coaching",
                 display_input=user_input,
                 coaching_context=(original, user_input),
@@ -148,10 +153,6 @@ class WitGymEngine:
 
         self.conversation.set_mode("quick_wit")
         yield from self._run_wit_pipeline(user_input, route="quick_wit")
-
-    def _enriched_coaching_input(self, user_input: str) -> str:
-        original = self.conversation.coaching_state.get("original_input", user_input)
-        return f"{original}. Additional context: {user_input}"
 
     def _handle_banter(self, user_input: str) -> Iterator[PipelineEvent]:
         logger.info("Banter route — dynamic reply")
@@ -253,8 +254,8 @@ class WitGymEngine:
         context_str = self.conversation.get_context_string()
         personas_to_run = ["cynic", "conviction", "absurdist"]
         if metadata.twist_potential <= 6:
-            personas_to_run = ["cynic", "absurdist"]
-            logger.info(f"twist_potential={metadata.twist_potential} ≤ 6 — cynic + absurdist only")
+            personas_to_run = ["cynic", "conviction"]
+            logger.info(f"twist_potential={metadata.twist_potential} ≤ 6 — cynic + conviction (orthogonal pair)")
         elif metadata.twist_potential > 8:
             personas_to_run = ["cynic", "absurdist", "bisociate"]
             logger.info(f"twist_potential={metadata.twist_potential} > 8 — bisociate replaces conviction")
