@@ -2,6 +2,7 @@
 name = "witgym"
 version = "0.1.0"
 description = "CBR-RAG comedy engine grounded in human comedic precedent"
+license = "Apache-2.0"
 requires-python = ">=3.11"
 dependencies = [
     "torch>=2.2.0",
