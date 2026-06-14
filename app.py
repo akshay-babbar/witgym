@@ -143,6 +143,10 @@ body.wg-light-mode footer { display: none !important; }
 
 /* ── Landing / Hero ─────────────────────────────────────────────────────── */
 #wg-landing { background: var(--wg-bg) !important; }
+/* Collapse Gradio's default gap between HTML components in landing */
+#wg-landing > .svelte-1plpy97, #wg-landing > div { gap: 0 !important; }
+#wg-landing .gap-4 { gap: 0 !important; }
+#wg-landing .block { padding: 0 !important; margin: 0 !important; min-height: 0 !important; }
 
 .wg-hero {
   position: relative;
@@ -153,7 +157,7 @@ body.wg-light-mode footer { display: none !important; }
   background:
     radial-gradient(circle, rgba(245,197,24,0.18) 1px, transparent 2px) center/24px 24px,
     var(--wg-bg);
-  padding: 2.5rem 1rem 1rem; text-align: center;
+  padding: 0.4rem 1rem 0; text-align: center;
 }
 
 /* ● REC indicator — bigger, more visible flicker */
@@ -180,19 +184,19 @@ body.wg-light-mode footer { display: none !important; }
   font-family: 'EB Garamond', Georgia, serif; font-style: italic;
   font-size: 0.78rem; letter-spacing: 0.22em;
   color: var(--wg-yellow); text-transform: uppercase;
-  margin-bottom: 1rem; position: relative; z-index: 1;
+  margin-bottom: 0.25rem; position: relative; z-index: 1;
 }
 
 /* Mascot */
-.wg-mascot { margin-bottom: 0.5rem; position: relative; z-index: 1;
-  filter: drop-shadow(0 4px 20px rgba(45,106,79,0.3)); }
+.wg-mascot { margin-bottom: 0; position: relative; z-index: 1;
+  filter: drop-shadow(0 4px 20px rgba(45,106,79,0.3)); transform: scale(0.58); }
 
 /* WIT / GYM wordmark */
 .wg-wordmark { display: flex; flex-direction: column; align-items: center;
-  line-height: 0.88; margin-bottom: 0.9rem; position: relative; z-index: 1; }
+  line-height: 0.88; margin-bottom: 0.15rem; position: relative; z-index: 1; }
 .wg-wordmark-wit, .wg-wordmark-gym {
   font-family: 'Bebas Neue', Impact, 'Arial Black', sans-serif;
-  font-size: clamp(4.5rem, 18vw, 9rem); letter-spacing: 0.03em;
+  font-size: clamp(2rem, 5.5vw, 3rem); letter-spacing: 0.03em;
 }
 /* Hardcoded hex + !important: Gradio 6 SSR on HF Spaces injects theme CSS after APP_CSS,
    causing same-specificity cascade override of var(--wg-white/yellow). */
@@ -206,7 +210,7 @@ body.wg-light-mode footer { display: none !important; }
 }
 
 .wg-start-hint {
-  font-size: 0.72rem; color: var(--wg-muted); margin-top: 0.4rem;
+  font-size: 0.72rem; color: var(--wg-muted); margin: 0.15rem 0 0 !important;
   font-style: italic; text-align: center;
   background: transparent !important;
 }
@@ -250,21 +254,21 @@ body.wg-light-mode footer { display: none !important; }
 #wg-start-btn { justify-content: center !important; background: transparent !important; padding: 0 !important; }
 #wg-start-btn button {
   font-family: 'Bebas Neue', Impact, sans-serif !important;
-  font-size: 1.2rem !important; letter-spacing: 0.22em !important;
+  font-size: 1.1rem !important; letter-spacing: 0.22em !important;
   background: var(--wg-green) !important; color: #fff !important;
   border: none !important; border-radius: 50px !important;
-  padding: 0.75rem 3.25rem !important;
+  padding: 0.55rem 3rem !important;
   transition: background .2s, transform .15s !important;
 }
 #wg-start-btn button:hover { background: #235a40 !important; transform: translateY(-2px) !important; }
 
 /* ── Coaching panel ─────────────────────────────────────────────────────── */
 .wg-coach-panel {
-  width: 100%; padding: 2rem 1rem 2.5rem;
+  width: 100%; padding: 0.2rem 1rem 0.15rem;
   background: var(--wg-bg); border-top: 1px solid #2a2a2a;
 }
 .wg-coach-divider {
-  display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;
+  display: flex; align-items: center; gap: 1rem; margin-bottom: 0.2rem;
 }
 .wg-coach-div-line { flex: 1; height: 1px; background: #3a3a3a; }
 .wg-coach-div-text {
@@ -809,7 +813,7 @@ body.wg-light-mode footer { display: none !important; }
 /* ── Step-cycle loading messages ────────────────────────────────────────── */
 .wg-step-cycle {
   position: relative; display: inline-block;
-  height: 1.3em; min-width: 170px; overflow: hidden;
+  height: 1.4em; min-width: 200px; overflow: hidden; vertical-align: middle;
 }
 .wg-step-cycle span {
   position: absolute; left: 0; top: 0;
@@ -926,7 +930,7 @@ body.wg-light-mode footer { display: none !important; }
 /* ── Arcade Character Selector ─────────────────────────────────────────────── */
 .wg-arcade {
   display: flex; align-items: center; justify-content: center;
-  gap: 0.5rem; padding: 1.5rem 0 0.5rem; max-width: 700px; margin: 0 auto;
+  gap: 0.5rem; padding: 0.05rem 0 0; max-width: 700px; margin: 0 auto;
 }
 .wg-arcade-stage {
   display: flex; align-items: center; justify-content: center;
@@ -944,9 +948,9 @@ body.wg-light-mode footer { display: none !important; }
 }
 .wg-arcade-center {
   background: var(--wg-surf2); border: 2px solid var(--wg-yellow);
-  border-radius: 14px; padding: 1.25rem 1.1rem 1rem;
-  display: flex; flex-direction: column; align-items: center; gap: 0.35rem;
-  cursor: pointer; min-width: 180px; max-width: 200px;
+  border-radius: 14px; padding: 0.35rem 0.8rem 0.35rem;
+  display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+  cursor: pointer; min-width: 150px; max-width: 175px;
   box-shadow: 0 0 28px rgba(245,197,24,0.22);
   transition: box-shadow .2s, border-color .2s;
   animation: wg-arcade-glow 2.4s ease-in-out infinite;
@@ -961,26 +965,24 @@ body.wg-light-mode footer { display: none !important; }
 }
 .wg-arcade-avatar-wrap { position: relative; }
 .wg-arcade-img {
-  width: 140px; height: 140px; border-radius: 12px;
+  width: 76px; height: 76px; border-radius: 10px;
   background: rgba(255,255,255,0.05); object-fit: cover;
   transition: opacity .18s;
 }
 .wg-arcade-name {
-  font-family: 'Bebas Neue', sans-serif; font-size: 1.35rem; letter-spacing: 0.12em;
-  color: var(--wg-yellow) !important; text-align: center; margin-top: 0.25rem;
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.15rem; letter-spacing: 0.12em;
+  color: var(--wg-yellow) !important; text-align: center; margin-top: 0.1rem;
 }
 .wg-arcade-role {
   font-family: 'EB Garamond', serif; font-style: italic;
   font-size: 0.7rem; color: var(--wg-muted); text-align: center; letter-spacing: 0.1em;
 }
 .wg-arcade-bio {
-  font-family: 'EB Garamond', serif; font-size: 0.78rem; color: rgba(240,240,240,0.72);
-  text-align: center; line-height: 1.45; margin-top: 0.2rem;
-  max-width: 170px;
+  display: none;
 }
 .wg-arcade-select-hint {
-  font-family: 'Bebas Neue', sans-serif; font-size: 0.58rem; letter-spacing: 0.22em;
-  color: #4ade80; margin-top: 0.35rem; opacity: 0.7;
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.55rem; letter-spacing: 0.22em;
+  color: #4ade80; margin-top: 0.1rem; opacity: 0.7;
 }
 /* Peek (adjacent) cards */
 .wg-arcade-peek {
@@ -989,14 +991,14 @@ body.wg-light-mode footer { display: none !important; }
   transition: opacity .2s, filter .2s, transform .2s;
   pointer-events: none;
 }
-.wg-arcade-peek img { width: 68px; height: 68px; border-radius: 8px; }
+.wg-arcade-peek img { width: 52px; height: 52px; border-radius: 8px; }
 .wg-arcade-peek-name {
   font-family: 'Bebas Neue', sans-serif; font-size: 0.65rem;
   letter-spacing: 0.1em; color: var(--wg-muted); text-align: center;
 }
 /* Dot indicators */
 .wg-arcade-dots {
-  display: flex; justify-content: center; gap: 0.35rem; margin: 0.75rem 0 0.25rem;
+  display: flex; justify-content: center; gap: 0.35rem; margin: 0.2rem 0 0.1rem;
 }
 .wg-arcade-dot {
   width: 6px; height: 6px; border-radius: 50%;
@@ -1047,24 +1049,21 @@ body.wg-light-mode footer { display: none !important; }
 /* ── Hidden char state textbox ───────────────────────────────────────────── */
 #wg-char-hidden { position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none; }
 
-/* ── Floating roast messages ─────────────────────────────────────────────── */
-.wg-roast-float {
-  position: fixed; bottom: 1.5rem; right: 1.5rem;
-  display: flex; flex-direction: column; align-items: flex-end;
-  gap: 0.5rem; z-index: 50; pointer-events: none;
-}
+/* ── Floating roast messages — JS-spawned, multi-directional ─────────────── */
 .wg-roast-chip {
+  position: fixed; z-index: 50; pointer-events: none;
   font-family: 'EB Garamond', Georgia, serif; font-style: italic;
-  font-size: 0.75rem; color: rgba(245,197,24,0.82);
-  background: rgba(20,20,20,0.72); border: 1px solid rgba(245,197,24,0.22);
-  border-radius: 20px; padding: 0.28rem 0.75rem;
-  opacity: 0;
-  animation: wg-roast-cycle 20s ease-in-out infinite;
+  font-size: 0.75rem; color: rgba(245,197,24,0.9);
+  background: rgba(20,20,20,0.78); border: 1px solid rgba(245,197,24,0.28);
+  border-radius: 20px; padding: 0.28rem 0.8rem;
+  opacity: 0; transition: none;
+  animation: wg-roast-float-in 4s ease-out forwards;
 }
-@keyframes wg-roast-cycle {
-  0%,100%  { opacity: 0; transform: translateY(6px); }
-  8%,18%   { opacity: 1; transform: translateY(0); }
-  22%,100% { opacity: 0; transform: translateY(-4px); }
+@keyframes wg-roast-float-in {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 /* ── Drill buttons — modern pill chips ──────────────────────────────────── */
@@ -1102,13 +1101,13 @@ body.wg-light-mode footer { display: none !important; }
 .wg-flicker-overlay {
   position: absolute; top: 0; left: 0; right: 0; bottom: 0;
   pointer-events: none; padding: 0.55rem 0.75rem;
-  font-family: 'EB Garamond', serif; font-size: 1rem; color: #4ade80;
-  opacity: 0.55; line-height: 1.5; display: flex; align-items: center;
+  font-family: 'EB Garamond', serif; font-size: 1rem; color: #2a2118;
+  opacity: 0.5; line-height: 1.5; display: flex; align-items: center;
   z-index: 2;
 }
 .wg-flicker-cursor {
   display: inline-block; width: 2px; height: 1.1em;
-  background: #4ade80; margin-left: 1px; vertical-align: middle;
+  background: #2a2118; margin-left: 1px; vertical-align: middle;
   animation: wg-cursor-blink 0.9s step-end infinite;
 }
 @keyframes wg-cursor-blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
@@ -1311,7 +1310,7 @@ window.wgOpenScene = function(character, show, setup, response, why, avatarUrl, 
 /* ── Arcade character selector ─────────────────────────────────────────── */
 (function() {
   var _chars = null;
-  var _idx = 0;
+  var _idx = 1; // Start on Michael (index 1), AI is index 0
 
   function _getChars() {
     if (_chars) return _chars;
@@ -1431,15 +1430,27 @@ window.wgOpenScene = function(character, show, setup, response, why, avatarUrl, 
 window.wgPlaySelect = function() {
   try {
     var ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [[880, 0, 0.07], [1320, 0.09, 0.10]].forEach(function(p) {
+    var now = ctx.currentTime;
+    // Whoosh: sawtooth sweep from 120→320 Hz over 0.18s
+    var sweep = ctx.createOscillator(), sg = ctx.createGain();
+    sweep.connect(sg); sg.connect(ctx.destination);
+    sweep.type = 'sawtooth';
+    sweep.frequency.setValueAtTime(120, now);
+    sweep.frequency.linearRampToValueAtTime(320, now + 0.18);
+    sg.gain.setValueAtTime(0, now);
+    sg.gain.linearRampToValueAtTime(0.04, now + 0.02);
+    sg.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    sweep.start(now); sweep.stop(now + 0.18);
+    // Metallic ping: two detuned sine waves at 1200 + 1207 Hz (beating)
+    [1200, 1207].forEach(function(f, i) {
       var o = ctx.createOscillator(), g = ctx.createGain();
       o.connect(g); g.connect(ctx.destination);
-      o.type = 'square'; o.frequency.value = p[0];
-      var t = ctx.currentTime + p[1];
+      o.type = 'sine'; o.frequency.value = f;
+      var t = now + 0.12;
       g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.055, t + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.001, t + p[2]);
-      o.start(t); o.stop(t + p[2]);
+      g.gain.linearRampToValueAtTime(0.06, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      o.start(t); o.stop(t + 0.28);
     });
   } catch(e) {}
 };
@@ -1497,6 +1508,52 @@ window.wgCopy = function(btn) {
 };
 
 /* ── Sci-fi flickering input placeholder ─────────────────────────────────── */
+/* ── Roast chip spawner — multi-directional ───────────────────────────────── */
+window.wgSpawnRoasts = function() {
+  var QUIPS = [
+    "“That’s what she said.”",
+    "“Identity theft is not a joke, Jim.”",
+    "“Bears. Beats. Battlestar Galactica.”",
+    "“How the turntables…”",
+    "“Would I rather be feared or loved? Easy. Both.”",
+    "“Fool me once, strike one.”",
+    "“I am Beyonc\xe9, always.”",
+    "“The worst thing about prison? The dementors.”",
+  ];
+  // Spawn positions: edge zones (bottom-right, bottom-left, top-right, left-mid, right-mid)
+  var ZONES = [
+    function() { return { bottom: (8 + Math.random()*15) + '%', right: (2 + Math.random()*8) + '%' }; },
+    function() { return { bottom: (8 + Math.random()*15) + '%', left: (2 + Math.random()*8) + '%' }; },
+    function() { return { top: (8 + Math.random()*12) + '%', right: (2 + Math.random()*10) + '%' }; },
+    function() { return { top: (30 + Math.random()*20) + '%', left: (1 + Math.random()*5) + '%' }; },
+    function() { return { top: (30 + Math.random()*20) + '%', right: (1 + Math.random()*5) + '%' }; },
+  ];
+  var qi = Math.floor(Math.random() * QUIPS.length);
+  var pos = ZONES[Math.floor(Math.random() * ZONES.length)]();
+  var el = document.createElement('div');
+  el.className = 'wg-roast-chip';
+  el.textContent = QUIPS[qi];
+  Object.assign(el.style, pos);
+  document.body.appendChild(el);
+  setTimeout(function() { el.parentNode && el.parentNode.removeChild(el); }, 4200);
+};
+
+window.wgInitRoasts = function() {
+  if (window._roastTimer) clearInterval(window._roastTimer);
+  // First chip immediately, then every 5–9s randomly
+  window.wgSpawnRoasts();
+  function scheduleNext() {
+    window._roastTimer = setTimeout(function() {
+      if (document.getElementById('wg-practice') &&
+          window.getComputedStyle(document.getElementById('wg-practice')).display !== 'none') {
+        window.wgSpawnRoasts();
+      }
+      scheduleNext();
+    }, 5000 + Math.random() * 4000);
+  }
+  scheduleNext();
+};
+
 window.wgInitFlicker = function() {
   var shell = document.getElementById('wg-chat-shell');
   if (!shell) return;
@@ -1559,11 +1616,23 @@ window.wgInitFlicker = function() {
     paused = true; overlay.style.display = 'none';
   });
   ta.addEventListener('blur', function() {
-    if (!ta.value.trim()) { paused = false; step(); }
+    if (!ta.value.trim()) { paused = false; textNode.nodeValue = ''; charIdx = 0; typing = true; step(); }
   });
   ta.addEventListener('input', function() {
     if (ta.value.trim()) { overlay.style.display = 'none'; }
-    else if (!paused) { paused = false; step(); }
+    else { paused = false; textNode.nodeValue = ''; charIdx = 0; typing = true; step(); }
+  });
+  // Gradio clears textarea programmatically after submit (no 'input' event fires)
+  // Detect this via keydown Enter + delayed poll
+  ta.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      setTimeout(function() {
+        if (!ta.value.trim()) {
+          paused = false; textNode.nodeValue = ''; charIdx = 0; typing = true;
+          overlay.style.display = ''; step();
+        }
+      }, 400);
+    }
   });
 
   step();
@@ -1724,15 +1793,7 @@ _MUG_SVG = (
 )
 
 
-_ROAST_FLOAT_HTML = (
-    '<div class="wg-roast-float" aria-hidden="true">'
-    '<div class="wg-roast-chip" style="animation-delay:0s">"That\'s what she said."</div>'
-    '<div class="wg-roast-chip" style="animation-delay:4s">"Identity theft is not a joke, Jim."</div>'
-    '<div class="wg-roast-chip" style="animation-delay:8s">"Bears. Beats. Battlestar Galactica."</div>'
-    '<div class="wg-roast-chip" style="animation-delay:12s">"How the turntables…"</div>'
-    '<div class="wg-roast-chip" style="animation-delay:16s">"Would I rather be feared or loved? Easy. Both."</div>'
-    '</div>'
-)
+_ROAST_FLOAT_HTML = '<div id="wg-roast-host" aria-hidden="true"></div>'
 
 
 def _practice_header_html() -> str:
@@ -1884,11 +1945,10 @@ def build_ui():
         # ── Landing screen ────────────────────────────────────────
         with gr.Column(visible=True, elem_id="wg-landing") as landing_col:
             gr.HTML(_landing_html())
-            gr.HTML(_SCROLL_CUE_HTML)
-            with gr.Row(elem_id="wg-start-btn"):
-                start_btn = gr.Button("START TRAINING →", variant="primary", size="lg")
             gr.HTML('<p class="wg-start-hint">Select your coach · or click Start Training to let AI choose</p>')
             gr.HTML(_coaching_panel_html())
+            with gr.Row(elem_id="wg-start-btn"):
+                start_btn = gr.Button("START TRAINING →", variant="primary", size="lg")
 
         # Hidden Textbox: JS writes selected char name here before arcade confirm fires
         char_hidden = gr.Textbox(visible=True, elem_id="wg-char-hidden", value="AI")
@@ -1957,7 +2017,7 @@ def build_ui():
                 "  document.body.classList.add('wg-light-mode');"
                 "  wgPlayBell && wgPlayBell();"
                 "  setTimeout(function(){ wgUpdateCoachHeader && wgUpdateCoachHeader(); }, 80);"
-                "  setTimeout(function(){ wgInitFlicker && wgInitFlicker(); }, 120);"
+                "  setTimeout(function(){ wgInitFlicker && wgInitFlicker(); wgInitRoasts && wgInitRoasts(); }, 150);"
                 "  return [];"
                 "}"
             ),
