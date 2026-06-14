@@ -363,6 +363,34 @@ def format_streaming_turn_html(state: StreamingTurnState, show_debug: bool = Tru
         if state.winning_persona else ""
     )
 
+    # Guard: don't display raw JSON tokens that leak during compress_winner_stream
+    is_raw_json = bool(display_text and display_text.lstrip().startswith("{"))
+
+    # ── Hero reply FIRST (above fold) ──────────────────────────────────────
+    parts.append(_mode_badge_html(state.route))
+    if display_text and not is_raw_json:
+        polish = ' · <span class="wg-dim-italic">polishing…</span>' if state.streaming_final else ""
+        parts += [
+            '<div class="wg-coach-reply wg-coach-reply--new">',
+            f'<div class="wg-coach-reply-header">Your humor coach{persona_label}{polish}</div>',
+            f'<div class="wg-coach-reply-body">{_esc(display_text)}</div>',
+            '</div>',
+        ]
+    elif state.streaming_final or is_raw_json:
+        # Compression pass running — show stable placeholder
+        parts += [
+            '<div class="wg-coach-reply wg-coach-reply--new">',
+            f'<div class="wg-coach-reply-header">Your humor coach{persona_label} · <span class="wg-dim-italic">polishing…</span></div>',
+            f'<div class="wg-coach-reply-body wg-dim-italic">Finding the sharpest version…</div>',
+            '</div>',
+        ]
+    elif not state.active_persona:
+        parts += [
+            f'<div class="wg-thinking">{_THINKING_ICON}'
+            '<span>drafting candidates…</span></div>',
+        ]
+
+    # ── Process rail SECOND (compact, below hero) ──────────────────────────
     parts += [
         _twist_meter_html(state.metadata.twist_potential),
         '<div class="wg-debug-toggle wg-debug-toggle--new">',
@@ -374,21 +402,6 @@ def format_streaming_turn_html(state: StreamingTurnState, show_debug: bool = Tru
         _streaming_debug_panels_html(state, state.selected),
         '</div>',
     ]
-
-    if display_text:
-        polish = ' · <span class="wg-dim-italic">polishing…</span>' if state.streaming_final else ""
-        parts += [
-            _mode_badge_html(state.route),
-            '<div class="wg-coach-reply wg-coach-reply--new">',
-            f'<div class="wg-coach-reply-header">Your humor coach{persona_label}{polish}</div>',
-            f'<div class="wg-coach-reply-body">{_esc(display_text)}</div>',
-            '</div>',
-        ]
-    elif not state.active_persona:
-        parts += [
-            f'<div class="wg-thinking">{_THINKING_ICON}'
-            '<span>drafting candidates…</span></div>',
-        ]
 
     parts.append('<div class="wg-rule"></div></div>')
     return "".join(parts)
@@ -473,8 +486,30 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
     new_cls = " wg-coach-reply--new" if is_last else ""
 
     beckon_cls = " wg-debug-toggle--new" if is_last else ""
+
+    # ── Hero reply FIRST (above fold) ──────────────────────────────────────
     parts += [
         _mode_badge_html(result.route),
+        f'<div class="wg-coach-reply{new_cls}" data-alts="{alts_json}" data-alt-idx="0">',
+        f'<div class="wg-coach-reply-header">Your humor coach{persona_label}{another_take_btn}</div>',
+        f'<div class="wg-coach-reply-body">{_esc(result.selected)}</div>',
+        '</div>',
+    ]
+    if result.explanation:
+        parts.append(_explanation_panel_html(result.explanation))
+
+    # ── Drill chips (coaching follow-ups) ──────────────────────────────────
+    if is_last:
+        parts.append(
+            '<div class="wg-drill-chips">'
+            '<span class="wg-drill-chip" onclick="wgDrill(\'Make that line sharper and more cutting\')">sharpen it →</span>'
+            '<span class="wg-drill-chip" onclick="wgDrill(\'Give me a completely different angle on the same situation\')">different angle →</span>'
+            '<span class="wg-drill-chip" onclick="wgDrill(\'Explain why that line works — what comedy principle does it use?\')">why it works →</span>'
+            '</div>'
+        )
+
+    # ── Process rail SECOND (expandable coaching notes) ────────────────────
+    parts += [
         _twist_meter_html(result.metadata.twist_potential),
         f'<div class="wg-debug-toggle{beckon_cls}">',
         '<span class="wg-debug-toggle-line"></span>',
@@ -484,13 +519,7 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
         f'<div class="wg-debug-body{collapsed_cls}">',
         _debug_panels_html(result),
         '</div>',
-        f'<div class="wg-coach-reply{new_cls}" data-alts="{alts_json}" data-alt-idx="0">',
-        f'<div class="wg-coach-reply-header">Your humor coach{persona_label}{another_take_btn}</div>',
-        f'<div class="wg-coach-reply-body">{_esc(result.selected)}</div>',
-        '</div>',
     ]
-    if result.explanation:
-        parts.append(_explanation_panel_html(result.explanation))
     parts.append('<div class="wg-rule"></div></div>')
     return "".join(parts)
 

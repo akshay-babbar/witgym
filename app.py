@@ -66,15 +66,16 @@ CHARACTERS = [
 STARTERS = [
     ("Status",         "I just got promoted to manager and I have no idea what I'm doing."),
     ("Social",         "My coworker keeps stealing my lunch from the fridge."),
-    ("Awkward",        "I've been cc'd on an email chain I definitely should not be reading."),
     ("Delusion",       "I'm pretending to understand cryptocurrency at dinner parties."),
-    ("Confidence",     "I give excellent feedback. People just don't know how to receive it."),
     ("Anxiety",        "I've been ignoring a voicemail so long it feels like a legal risk."),
-    ("Procrastination","I went to bed early last night."),
-    ("Self-awareness", "I sent a complaint about my manager to my manager."),
+    ("Self-aware",     "I sent a complaint about my manager to my manager."),
     ("Coach me",       "Help me respond when someone asks about my job and I don't know what to say."),
-    ("Comeback",       "How would you handle it if someone called you 'surprisingly competent'?"),
-    ("Explain",        "Teach me why it's funny when someone gives a backhanded compliment."),
+]
+
+DRILL_ACTIONS = [
+    ("sharpen it",        "Make that line sharper and more cutting"),
+    ("different angle",   "Give me a completely different angle on the same situation"),
+    ("explain the joke",  "Explain why that line works — what comedy principle does it use?"),
 ]
 
 TRANSCRIPT_MIN_HEIGHT = 440
@@ -747,6 +748,42 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 #wg-practice .wg-twist-score { color: #b45309 !important; }
 #wg-practice .wg-twist-label { color: #9e9288 !important; }
 
+/* ── Rep counter ────────────────────────────────────────────────────────── */
+.wg-rep-count {
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.72rem;
+  letter-spacing: 0.2em; color: var(--wg-green); padding: 0.1rem 0.5rem;
+  border: 1px solid rgba(45,106,79,0.35); border-radius: 20px;
+  background: rgba(45,106,79,0.06);
+  transition: opacity .3s;
+}
+.wg-rep-count:empty { display: none; }
+
+/* ── Drill chips ─────────────────────────────────────────────────────────── */
+.wg-drill-chips {
+  display: flex; flex-wrap: wrap; gap: 0.45rem;
+  margin: 0.6rem 0 0.2rem;
+}
+.wg-drill-chip {
+  font-family: 'EB Garamond', serif; font-style: italic;
+  font-size: 0.82rem; cursor: pointer; user-select: none;
+  padding: 0.22rem 0.7rem; border-radius: 20px;
+  border: 1px solid var(--wg-border); color: var(--wg-muted);
+  background: var(--wg-surf2);
+  transition: border-color .15s, color .15s, background .15s;
+}
+.wg-drill-chip:hover {
+  border-color: var(--wg-yellow); color: var(--wg-yellow);
+  background: rgba(245,197,24,0.06);
+}
+#wg-practice .wg-drill-chip {
+  border-color: #e0d8cc !important; color: #9e9288 !important;
+  background: #f5f2eb !important;
+}
+#wg-practice .wg-drill-chip:hover {
+  border-color: #b45309 !important; color: #b45309 !important;
+  background: rgba(180,83,9,0.06) !important;
+}
+
 /* ── Persona label + another-take ──────────────────────────────────────── */
 .wg-persona-label {
   font-style: italic; font-family: 'EB Garamond', serif;
@@ -795,6 +832,20 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 #wg-practice { position: relative; }
 
 /* ── Comic-style modal ──────────────────────────────────────────────────── */
+/* Same structural fix as #wg-practice: Gradio injects
+   .prose * { color: var(--body-text-color) } which resolves to #f0f0f0 (dark
+   theme) on every child element. The modal is outside #wg-practice so that
+   scope doesn't apply. Override the same Gradio CSS vars here so child text
+   inherits dark-on-ivory correctly — no per-element !important hacks needed. */
+#wg-modal {
+  --body-text-color:         #2a2118;
+  --body-text-color-subdued: #6b6258;
+  --block-text-color:        #2a2118;
+  --block-label-text-color:  #6b6258;
+  --input-text:              #2a2118;
+  --color-text-body:         #2a2118;
+  color: #2a2118;
+}
 #wg-modal-overlay {
   position: fixed; inset: 0; z-index: 9999;
   background: rgba(0,0,0,0.65); backdrop-filter: blur(5px);
@@ -820,7 +871,7 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 .wg-modal-x:hover { background: #333; }
 .wg-pop-show {
   font-family: 'Bebas Neue', sans-serif; font-size: 1rem;
-  letter-spacing: 0.2em; color: #2d6a4f; margin-bottom: 1rem;
+  letter-spacing: 0.2em; color: #2d6a4f !important; margin-bottom: 1rem;
   border-bottom: 2px solid #e0d8cc; padding-bottom: 0.5rem;
 }
 .wg-pop-row { display: flex; gap: 1.25rem; margin-bottom: 1rem; align-items: flex-start; }
@@ -828,21 +879,21 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 .wg-pop-avatar { width: 110px; height: 110px; border-radius: 12px; background: #f5f0e6; }
 .wg-pop-name {
   font-family: 'Bebas Neue', sans-serif; font-size: 1rem;
-  letter-spacing: 0.08em; color: #2a2118; text-align: center;
+  letter-spacing: 0.08em; color: #2a2118 !important; text-align: center;
 }
 .wg-pop-title {
-  font-size: 0.72rem; color: #9e9288; text-align: center; font-style: italic;
+  font-size: 0.72rem; color: #9e9288 !important; text-align: center; font-style: italic;
   max-width: 110px; line-height: 1.3;
 }
 .wg-pop-right { flex: 1; display: flex; flex-direction: column; gap: 0.65rem; }
 .wg-pop-setup {
-  font-style: italic; color: #6b6258; font-size: 0.95rem; line-height: 1.5;
+  font-style: italic; color: #6b6258 !important; font-size: 0.95rem; line-height: 1.5;
 }
 .wg-pop-bubble {
   background: #fff; border: 2.5px solid #1a1a1a; border-radius: 14px;
   padding: 0.85rem 1rem;
   font-family: 'Bebas Neue', Impact, sans-serif;
-  font-size: 1.15rem; line-height: 1.3; letter-spacing: 0.02em; color: #1a1a1a;
+  font-size: 1.15rem; line-height: 1.3; letter-spacing: 0.02em; color: #1a1a1a !important;
   position: relative;
 }
 .wg-pop-bubble::before {
@@ -859,12 +910,12 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 }
 .wg-pop-why-title {
   font-family: 'Bebas Neue', sans-serif; font-size: 0.82rem;
-  letter-spacing: 0.12em; color: #2563eb; margin-bottom: 0.35rem;
+  letter-spacing: 0.12em; color: #2563eb !important; margin-bottom: 0.35rem;
 }
-.wg-pop-why-body { font-size: 0.95rem; color: #1e3a5f; line-height: 1.55; }
+.wg-pop-why-body { font-size: 0.95rem; color: #1e3a5f !important; line-height: 1.55; }
 /* Bio modal (character card click — no scene context) */
 .wg-pop-bio {
-  font-size: 1.05rem; color: #3d3429; line-height: 1.6; font-style: italic;
+  font-size: 1.05rem; color: #3d3429 !important; line-height: 1.6; font-style: italic;
   background: #f5f0e6; border-left: 3px solid #2d6a4f;
   padding: 0.75rem 1rem; border-radius: 0 10px 10px 0;
 }
@@ -970,6 +1021,34 @@ window.wgPlayClack = function() {
     }).observe(t, {childList:true, subtree:true});
   }
   observe();
+})();
+
+/* Drill chip: prefill textbox and focus it */
+window.wgDrill = function(text) {
+  var ta = document.querySelector('#wg-chat-shell textarea');
+  if (!ta) return;
+  var setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value');
+  if (setter && setter.set) setter.set.call(ta, text);
+  ta.dispatchEvent(new Event('input', { bubbles: true }));
+  ta.focus();
+  ta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+
+/* Rep counter: count completed (non-thinking) turns */
+(function(){
+  function updateRep() {
+    var turns = document.querySelectorAll('.wg-turn:not(.wg-turn--thinking)');
+    var el = document.getElementById('wg-rep-count');
+    if (!el) return;
+    el.textContent = turns.length > 0 ? 'REP ' + turns.length : '';
+  }
+  function watchTranscript() {
+    var t = document.querySelector('.wg-transcript');
+    if (!t) { setTimeout(watchTranscript, 600); return; }
+    new MutationObserver(updateRep).observe(t, {childList: true, subtree: true});
+    updateRep();
+  }
+  watchTranscript();
 })();
 
 window.wgClose = function() {
@@ -1140,6 +1219,7 @@ def _practice_header_html() -> str:
         '<div class="wg-practice-bar">'
         '<div class="wg-practice-logo">WIT<span>GYM</span></div>'
         '<div class="wg-practice-sub">Comedy Coaching Engine</div>'
+        '<span id="wg-rep-count" class="wg-rep-count" aria-live="polite"></span>'
         '</div>'
     )
 
@@ -1302,6 +1382,13 @@ def build_ui():
                                 elem_classes=["wg-starter-btn"],
                             )
                             sb.click(fn=fill_starter, inputs=[gr.State(text)], outputs=user_input, queue=False)
+                        gr.HTML('<div class="wg-sidebar-label" style="margin-top:.85rem">Coach drills</div>')
+                        for label, drill_text in DRILL_ACTIONS:
+                            db = gr.Button(
+                                f"↻ {label}", size="sm", variant="secondary",
+                                elem_classes=["wg-starter-btn"],
+                            )
+                            db.click(fn=fill_starter, inputs=[gr.State(drill_text)], outputs=user_input, queue=False)
 
         # ── Event wiring ──────────────────────────────────────────
         start_btn.click(
