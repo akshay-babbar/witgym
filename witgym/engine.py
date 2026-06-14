@@ -88,6 +88,7 @@ class WitGymEngine:
         index_path: str = config.INDEX_PATH,
         resources: Optional[SharedResources] = None,
         conversation: Optional[ConversationManager] = None,
+        last_wit_response: Optional[WitGymResponse] = None,
     ):
         if resources is None:
             logger.info("Initialising WitGymEngine...")
@@ -95,7 +96,7 @@ class WitGymEngine:
         else:
             self._resources = resources
         self.conversation = conversation or ConversationManager()
-        self._last_wit_response: Optional[WitGymResponse] = None
+        self._last_wit_response: Optional[WitGymResponse] = last_wit_response
         logger.success("WitGymEngine ready.")
 
     @property

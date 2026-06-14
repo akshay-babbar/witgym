@@ -1142,7 +1142,7 @@ threading.Thread(target=_bg_warmup, daemon=True).start()
 
 
 def _new_session():
-    return {"conversation": ConversationManager(), "traces": []}
+    return {"conversation": ConversationManager(), "traces": [], "last_wit_response": None}
 
 
 def _on_page_load():
@@ -1259,7 +1259,7 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
     )
 
     progress(0.05, desc="Warming up coach…")
-    engine = WitGymEngine(resources=_get_shared(), conversation=session["conversation"])
+    engine = WitGymEngine(resources=_get_shared(), conversation=session["conversation"], last_wit_response=session.get("last_wit_response"))
     stream_state = StreamingTurnState(user_input=user_input)
     try:
         for event in engine.respond_stream(user_input):
@@ -1281,6 +1281,7 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
             elif event.phase == "done" and event.response:
                 session["traces"].append((user_input, event.response))
                 session["traces"] = session["traces"][-5:]
+                session["last_wit_response"] = engine._last_wit_response
                 yield (
                     format_transcript_html(session["traces"], show_debug=show_debug),
                     gr.update(value="", interactive=True),
@@ -1385,12 +1386,13 @@ def build_ui():
                             )
                             sb.click(fn=fill_starter, inputs=[gr.State(text)], outputs=user_input, queue=False)
                         gr.HTML('<div class="wg-sidebar-label" style="margin-top:.85rem">Coach drills</div>')
+                        drill_btns = []
                         for label, drill_text in DRILL_ACTIONS:
                             db = gr.Button(
                                 f"↻ {label}", size="sm", variant="secondary",
                                 elem_classes=["wg-starter-btn"],
                             )
-                            db.click(fn=fill_starter, inputs=[gr.State(drill_text)], outputs=user_input, queue=False)
+                            drill_btns.append((db, drill_text))
 
         # ── Event wiring ──────────────────────────────────────────
         start_btn.click(
@@ -1416,6 +1418,13 @@ def build_ui():
             inputs=[show_debug_state],
             outputs=[transcript, user_input, session_state],
         )
+        for db, drill_text in drill_btns:
+            db.click(
+                fn=practice,
+                inputs=[gr.State(drill_text), session_state, show_debug_state],
+                outputs=[transcript, user_input, session_state],
+                show_progress="full", show_progress_on=submit_btn,
+            )
         demo.load(fn=_on_page_load, outputs=transcript, show_progress="hidden")
 
     return demo
