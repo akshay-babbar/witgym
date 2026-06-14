@@ -166,9 +166,10 @@ body.wg-light-mode footer { background: #fffff8 !important; }
   font-family: 'Bebas Neue', Impact, 'Arial Black', sans-serif;
   font-size: clamp(4.5rem, 18vw, 9rem); letter-spacing: 0.03em;
 }
-.wg-wordmark-wit { color: var(--wg-white); text-shadow: 0 0 40px rgba(0,0,0,0.6); }
-/* Stronger shadow separates GYM (yellow) from the yellow dot grid behind it */
-.wg-wordmark-gym { color: var(--wg-yellow); text-shadow: 0 2px 20px rgba(0,0,0,0.8), 0 0 60px rgba(0,0,0,0.5); }
+/* Hardcoded hex + !important: Gradio 6 SSR on HF Spaces injects theme CSS after APP_CSS,
+   causing same-specificity cascade override of var(--wg-white/yellow). */
+.wg-wordmark-wit { color: #f0f0f0 !important; text-shadow: 0 0 40px rgba(0,0,0,0.6); }
+.wg-wordmark-gym { color: #f5c518 !important; text-shadow: 0 2px 20px rgba(0,0,0,0.8), 0 0 60px rgba(0,0,0,0.5); }
 
 .wg-hero-tagline {
   font-family: 'EB Garamond', Georgia, serif; font-style: italic;
@@ -1046,7 +1047,7 @@ def _on_page_load():
             f'<div class="wg-empty-icon">⚠️</div><div class="wg-empty-text">{html.escape(_warmup_error)}</div>'
             '</div></div>'
         )
-    return format_transcript_html([], show_debug=True)
+    return format_transcript_html([], show_debug=False)
 
 
 # ── HTML generators ───────────────────────────────────────────────────────────
@@ -1099,7 +1100,7 @@ def _landing_html() -> str:
     return (
         f'<div class="wg-hero">'
         f'<div class="wg-rec"><span class="wg-rec-dot"></span>REC</div>'
-        f'<div class="wg-kicker">CBR-RAG Comedy Coaching Engine</div>'
+        f'<div class="wg-kicker">Paste awkward &mdash; get one line that lands</div>'
         f'{_MASCOT}'
         f'<div class="wg-wordmark">'
         f'<div class="wg-wordmark-wit">WIT</div>'
@@ -1114,7 +1115,7 @@ def _practice_header_html() -> str:
     return (
         '<div class="wg-practice-bar">'
         '<div class="wg-practice-logo">WIT<span>GYM</span></div>'
-        '<div class="wg-practice-sub">CBR-RAG Comedy Engine</div>'
+        '<div class="wg-practice-sub">Comedy Coaching Engine</div>'
         '</div>'
     )
 
@@ -1213,6 +1214,7 @@ def _theme():
             button_primary_background_fill="#2d6a4f",
             button_primary_background_fill_hover="#235a40",
             button_primary_text_color="#ffffff",
+            body_text_color="#f0f0f0",
             input_background_fill="#1a1a1a",
             input_border_color="#2e2e2e",
             border_color_primary="#2e2e2e",
@@ -1227,7 +1229,7 @@ def build_ui():
         gr.HTML(value=_MODAL_SCAFFOLD)
 
         session_state    = gr.State(_new_session())
-        show_debug_state = gr.State(True)   # coaching notes ON by default
+        show_debug_state = gr.State(False)  # punchline first; user can expand coaching notes
 
         # ── Landing screen ────────────────────────────────────────
         with gr.Column(visible=True, elem_id="wg-landing") as landing_col:
@@ -1247,7 +1249,7 @@ def build_ui():
                     with gr.Column(scale=3):
                         with gr.Group(elem_id="wg-chat-shell"):
                             transcript = gr.HTML(
-                                value=format_transcript_html([], show_debug=True),
+                                value=format_transcript_html([], show_debug=False),
                                 min_height=TRANSCRIPT_MIN_HEIGHT,
                                 max_height=TRANSCRIPT_MAX_HEIGHT,
                                 autoscroll=True,

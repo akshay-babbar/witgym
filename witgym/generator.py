@@ -5,6 +5,7 @@ Implements Principles 4, 5, and 6 from the spec.
 from typing import Iterator, List, Set
 from collections import Counter
 import re as _re
+import json as _json
 from loguru import logger
 from transformers import LogitsProcessorList, NoBadWordsLogitsProcessor
 from witgym.model import generate_text, generate_text_stream, ClichePenaltyProcessor, _strip_thinking
@@ -502,6 +503,15 @@ def compress_winner(winner: str, model, tokenizer) -> str:
     compressed = generate_text(prompt, model, tokenizer, config_type="extract")
     compressed = compressed.strip().strip('"').strip("'")
 
+    # Defensive JSON parse: model sometimes wraps output as {"compressed_line": "..."}
+    if compressed.startswith("{"):
+        try:
+            obj = _json.loads(compressed)
+            compressed = next(iter(obj.values())) if obj else compressed
+        except Exception:
+            pass
+    compressed = str(compressed).strip().strip('"').strip("'")
+
     # Sanity guards: reject if collapsed, expanded, or starts with a fragment marker
     _FRAGMENT_STARTS = (
         "but ", "and ", "or ", "which ", "that ", "because ",
@@ -544,6 +554,15 @@ def compress_winner_stream(winner: str, model, tokenizer) -> Iterator[tuple[str,
         parts.append(token)
         yield ("token", token)
     compressed = _strip_thinking("".join(parts)).strip().strip('"').strip("'")
+
+    # Defensive JSON parse: model sometimes wraps output as {"compressed_line": "..."}
+    if compressed.startswith("{"):
+        try:
+            obj = _json.loads(compressed)
+            compressed = next(iter(obj.values())) if obj else compressed
+        except Exception:
+            pass
+    compressed = str(compressed).strip().strip('"').strip("'")
 
     _FRAGMENT_STARTS = (
         "but ", "and ", "or ", "which ", "that ", "because ",
