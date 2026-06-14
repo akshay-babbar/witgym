@@ -9,6 +9,7 @@ python_version: "3.12"
 app_file: app.py
 pinned: false
 license: apache-2.0
+short_description: Paste awkward. Get one sharp wit line + coach drills.
 tags:
   - comedy
   - rag
@@ -20,9 +21,19 @@ tags:
 
 > *A comedy coaching engine grounded in human precedent — not vibes.*
 
-Paste an awkward real-life situation. WitGym dissects the **neurological structure of the moment**, retrieves analogous scenes from The Office, generates three distinct witty responses as different personas, ranks them, and explains precisely *why* the winner lands.
+Paste an awkward real-life situation (or tap a starter). WitGym dissects the **structural comedy of the moment**, retrieves analogous scenes from The Office, drafts 2–3 persona candidates (cynic, conviction, absurdist — twist-gated), ranks them, and returns one compressed sharp line. After a reply, use coach drills to sharpen it, try a different angle, or explain why it lands.
 
 **[→ Try it live on Hugging Face Spaces](https://huggingface.co/spaces/build-small-hackathon/WitGym)**
+
+---
+
+## How to use
+
+1. **Start** — click *Start Training* on the landing screen.
+2. **Describe the moment** — paste your own awkward situation, or tap a starter chip in the sidebar (*Status*, *Social*, *Delusion*, etc.).
+3. **Get a line** — WitGym returns one sharp wit line grounded in Office precedent (not an in-character Michael/Dwight impersonation).
+4. **Coach drills** — after a reply, use *sharpen it*, *different angle*, or *explain the joke* to iterate on the same situation.
+5. **Character panel** — the Office cast cards on the landing page are reference bios only; you do **not** pick a character to role-play.
 
 ---
 
@@ -49,7 +60,7 @@ flowchart TD
     E --> F[BGE-small embedder\n384-dim semantic vector]
     F --> G[FAISS search\n4021 Office scene index]
     G --> H[Top-3 precedent scenes\nwith why_it_works annotations]
-    H --> I[Pass 2 — Persona Generation\n3 candidates: Deadpan · Absurdist · Strategist]
+    H --> I[Pass 2 — Persona Generation\n2–3 candidates: Cynic · Conviction · Absurdist]
     I --> J[Pass 3 — Tournament Ranking\nranked by structural fit to the metadata]
     J --> K[Pass 4 — Compression\nreduce to one sharp line]
     K --> L[Coaching\noptional: what made this work?]
@@ -126,7 +137,7 @@ sequenceDiagram
     I-->>E: 3 precedent scenes
 
     Note over E,L: Pass 2 — Candidate generation
-    E->>L: Generate 3 personas (Deadpan, Absurdist, Strategist)
+    E->>L: Generate 2–3 personas (cynic, conviction, absurdist — twist-gated)
     L-->>E: 3 candidate responses (streaming)
 
     Note over E,L: Pass 3 — Tournament ranking
@@ -145,7 +156,9 @@ sequenceDiagram
 
 ## UI: Progressive Disclosure
 
-The coaching panel uses a **progressive disclosure** architecture — the full debug trace is always computed, but revealed in layers:
+The practice screen is situation-first: you paste or pick a starter, then receive a streaming coach reply. The landing **coaching panel** shows Office character bios (tap for a popup) — reference flavor, not a character picker.
+
+The debug trace uses **progressive disclosure** — full pipeline output is computed, but revealed in layers:
 
 - **Chips** (STATUS ASSERTION, STATUS THREAT, MODERATE) — tap to get a one-line definition of what that label means
 - **Capsules** (SUBTEXT, POWER DYNAMIC) — tap to expand the actual analysis of your situation
