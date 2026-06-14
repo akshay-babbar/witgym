@@ -96,13 +96,14 @@ APP_CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
 
 /* ── Global dark base ──────────────────────────────────────────────────── */
-body, .gradio-container, .main, footer { background: #141414 !important; }
+body, .gradio-container, .main { background: #141414 !important; }
+footer { display: none !important; }
 
 /* ── Light mode (activated on START TRAINING) ──────────────────────────── */
 body.wg-light-mode,
 body.wg-light-mode .gradio-container,
-body.wg-light-mode .main,
-body.wg-light-mode footer { background: #fffff8 !important; }
+body.wg-light-mode .main { background: #f5f0e8 !important; }
+body.wg-light-mode footer { display: none !important; }
 
 :root {
   --wg-bg:     #141414;
@@ -152,7 +153,7 @@ body.wg-light-mode footer { background: #fffff8 !important; }
   background:
     radial-gradient(circle, rgba(245,197,24,0.18) 1px, transparent 2px) center/24px 24px,
     var(--wg-bg);
-  padding: 5rem 1rem 2.5rem; text-align: center;
+  padding: 2.5rem 1rem 1rem; text-align: center;
 }
 
 /* ● REC indicator — bigger, more visible flicker */
@@ -345,7 +346,7 @@ body.wg-light-mode footer { background: #fffff8 !important; }
   background: #f0fdf4 !important; border-color: #4ade80 !important; border-left-color: #2d6a4f !important;
 }
 #wg-practice .wg-coach-reply-header { color: #2d6a4f !important; }
-#wg-practice .wg-coach-reply-body   { color: #14532d !important; }
+#wg-practice .wg-coach-reply-body   { color: #14532d !important; font-size: 1.55rem !important; font-weight: 600 !important; }
 #wg-practice .wg-panel-yellow { background: #fffbeb !important; border-color: #fbbf24 !important; color: #78350f !important; }
 #wg-practice .wg-panel-yellow .wg-panel-title { color: #b45309 !important; }
 #wg-practice .wg-panel-blue   { background: #eff6ff !important; border-color: #60a5fa !important; color: #1e3a5f !important; }
@@ -462,7 +463,7 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 }
 .wg-coach-reply-body {
   font-family: 'EB Garamond', Georgia, serif;
-  font-size: 1.2rem; line-height: 1.6; color: #c6f6d5; font-weight: 500;
+  font-size: 1.55rem; line-height: 1.55; color: #c6f6d5; font-weight: 600;
 }
 .wg-coach-reply--compact { margin-top: 0.5rem; }
 
@@ -1211,14 +1212,28 @@ def _landing_html() -> str:
         f'<div class="wg-wordmark-wit">WIT</div>'
         f'<div class="wg-wordmark-gym">GYM</div>'
         f'</div>'
-        f'<p class="wg-hero-tagline">Coach your comedy instincts — one situation at a time.</p>'
         f'</div>'
     )
+
+
+_MUG_SVG = (
+    '<svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg" width="32" height="32" aria-hidden="true" style="flex-shrink:0">'
+    '<rect x="6" y="16" width="24" height="22" rx="3" fill="#f5f0e8" stroke="#c8bfaf" stroke-width="1.2"/>'
+    '<path d="M30 22 Q40 22 40 28 Q40 34 30 34" fill="none" stroke="#c8bfaf" stroke-width="2.5" stroke-linecap="round"/>'
+    '<rect x="4" y="12" width="28" height="6" rx="3" fill="#ede6d8" stroke="#c8bfaf" stroke-width="1"/>'
+    '<text x="18" y="27" text-anchor="middle" font-family="Arial Black,Impact,sans-serif" font-size="4.5" font-weight="900" fill="#2d6a4f">WORLD\'S</text>'
+    '<text x="18" y="33" text-anchor="middle" font-family="Arial Black,Impact,sans-serif" font-size="4.5" font-weight="900" fill="#2d6a4f">BEST COACH</text>'
+    '<path d="M13 10 Q14 7 13 4" fill="none" stroke="rgba(180,83,9,0.4)" stroke-width="1.2" stroke-linecap="round"/>'
+    '<path d="M18 9 Q19 6 18 3" fill="none" stroke="rgba(180,83,9,0.4)" stroke-width="1.2" stroke-linecap="round"/>'
+    '<path d="M23 10 Q24 7 23 4" fill="none" stroke="rgba(180,83,9,0.4)" stroke-width="1.2" stroke-linecap="round"/>'
+    '</svg>'
+)
 
 
 def _practice_header_html() -> str:
     return (
         '<div class="wg-practice-bar">'
+        + _MUG_SVG +
         '<div class="wg-practice-logo">WIT<span>GYM</span></div>'
         '<div class="wg-practice-sub">Comedy Coaching Engine</div>'
         '<span id="wg-rep-count" class="wg-rep-count" aria-live="polite"></span>'
@@ -1258,26 +1273,26 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
         session,
     )
 
-    progress(0.05, desc="Warming up coach…")
+    progress(0.05, desc="That's what she said — analysing…")
     engine = WitGymEngine(resources=_get_shared(), conversation=session["conversation"], last_wit_response=session.get("last_wit_response"))
     stream_state = StreamingTurnState(user_input=user_input)
     try:
         for event in engine.respond_stream(user_input):
             apply_stream_event(stream_state, event)
             if event.phase == "metadata":
-                progress(0.2, desc="Reading the room…")
+                progress(0.2, desc="Reading the room like Jim reads Dwight…")
             elif event.phase == "banter":
-                progress(0.5, desc="Banter mode…")
+                progress(0.5, desc="Banter mode activated…")
             elif event.phase == "coaching_ask":
-                progress(0.5, desc="Coaching — asking…")
+                progress(0.5, desc="Consulting the coaching panel…")
             elif event.phase == "scenes":
-                progress(0.35, desc="Finding precedent…")
+                progress(0.35, desc="Checking the beet farm playbook…")
             elif event.phase == "candidate_start":
-                progress(0.5, desc=f"Drafting {event.persona}…")
+                progress(0.5, desc=f"Channeling {event.persona}…")
             elif event.phase == "ranked":
-                progress(0.85, desc="Picking the sharpest line…")
+                progress(0.85, desc="Picking the sharpest line (not that one, Toby)…")
             elif event.phase == "final_start":
-                progress(0.92, desc="Polishing the line…")
+                progress(0.92, desc="Polishing — almost there…")
             elif event.phase == "done" and event.response:
                 session["traces"].append((user_input, event.response))
                 session["traces"] = session["traces"][-5:]

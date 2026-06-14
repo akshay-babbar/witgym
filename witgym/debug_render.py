@@ -538,9 +538,10 @@ def format_transcript_html(
     if not traces and not append_html:
         body = (
             '<div class="wg-empty">'
-            '<div class="wg-empty-icon">🎭</div>'
-            '<div class="wg-empty-text">Drop a situation — awkward, delusional, or painfully relatable — '
-            'and your coach will find the wit in it.</div>'
+            '<div class="wg-empty-icon">🎤</div>'
+            '<div class="wg-empty-text" style="font-size:1.05rem;font-weight:600;font-style:normal;color:inherit">Drop the situation.</div>'
+            '<div class="wg-empty-text" style="margin-top:0.15rem">Your coach will find the line that lands.</div>'
+            '<div class="wg-empty-text" style="margin-top:0.6rem;font-size:0.8rem;opacity:0.55;font-style:italic">Awkward, delusional, or painfully relatable — all valid.</div>'
             '</div>'
         )
     else:
