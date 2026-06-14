@@ -8,7 +8,7 @@ sdk_version: "6.17.3"
 python_version: "3.12"
 app_file: app.py
 pinned: false
-license: mit
+license: apache-2.0
 tags:
   - comedy
   - rag
@@ -173,8 +173,26 @@ New elements animate in with a shimmer sweep + border glow system that stops on 
 - **Model size**: Qwen3.5-27B ≤ 32B ✓
 - **Embedder**: BGE-small 33M — runs on CPU, no GPU needed for retrieval ✓
 - **Deployed on HF Spaces**: Gradio app, streams via SSE ✓
-- **Open source**: MIT licensed ✓
+- **Open source**: Apache 2.0 licensed ✓
 - No fine-tuning required — all comedy structure is in the retrieval index and prompts
+
+---
+
+## How to cite WitGym
+
+If you use or build on this project, please cite:
+
+```bibtex
+@software{babbar2026witgym,
+  author = {Babbar, Akshay},
+  title = {WitGym: CBR-RAG Comedy Coaching Engine},
+  year = {2026},
+  url = {https://github.com/akshay-babbar/witgym},
+  note = {Hugging Face Build Small Hackathon 2026 submission}
+}
+```
+
+See also [`CITATION.cff`](CITATION.cff) for machine-readable metadata.
 
 ---
 

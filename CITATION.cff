@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+title: WitGym
+message: >-
+  If you use this software, please cite it using the metadata from this file.
+type: software
+authors:
+  - family-names: Babbar
+    given-names: Akshay
+repository-code: 'https://github.com/akshay-babbar/witgym'
+url: 'https://huggingface.co/spaces/build-small-hackathon/WitGym'
+license: Apache-2.0
+version: 0.1.0
+date-released: '2026-06-14'
+keywords:
+  - comedy
+  - rag
+  - case-based-reasoning
+  - qwen
+abstract: >-
+  A Case-Based Reasoning Retrieval-Augmented Generation (CBR-RAG) comedy
+  coaching engine grounded in The Office sitcom precedent.
