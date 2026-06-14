@@ -1221,7 +1221,7 @@ def _theme():
 
 
 def build_ui():
-    with gr.Blocks(title="WitGym") as demo:
+    with gr.Blocks(title="WitGym", css=APP_CSS, theme=_theme(), head=_GLOBAL_JS_SCRIPT_TAG) as demo:
         # Modal scaffold at top DOM level — position:fixed, never hidden by Column visibility toggling.
         # JS is injected via launch(head=...) below, not here, for SSR compatibility.
         gr.HTML(value=_MODAL_SCAFFOLD)
@@ -1307,12 +1307,6 @@ def build_ui():
 
 
 demo = build_ui()
-# Attach css/theme/head to the Blocks object at module level so HF Spaces picks them up
-# when it imports `demo` and calls its own launch() without these kwargs.
-# Gradio 6.x reads these from the Blocks object if not explicitly passed to launch().
-demo.css   = APP_CSS
-demo.theme = _theme()
-demo.head  = _GLOBAL_JS_SCRIPT_TAG
 demo.queue(default_concurrency_limit=1)
 demo.favicon_path = _FAVICON
 
