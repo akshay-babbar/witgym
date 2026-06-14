@@ -113,6 +113,30 @@ body.wg-light-mode footer { background: #fffff8 !important; }
   --wg-r:      10px;
 }
 
+/* ── Light-mode CSS variable scope — ALL var(--wg-*) inside #wg-practice
+   resolve to light values without needing per-class overrides. This is the
+   structural fix: dark :root vars don't cascade into the light practice screen.
+   We also override Gradio's dark-theme vars (--body-text-color, etc.) so that
+   Gradio's own .prose * { color: var(--body-text-color) } rule renders dark text,
+   not near-white (#f0f0f0) on our ivory background. */
+#wg-practice {
+  --wg-bg:     #fffff8;
+  --wg-surf:   #faf9f6;
+  --wg-surf2:  #f0ece4;
+  --wg-border: #e0d8cc;
+  --wg-white:  #2a2118;
+  --wg-muted:  #9e9288;
+  --wg-yellow: #b45309;
+  /* --wg-green and --wg-r stay the same across modes */
+  /* Gradio dark-theme CSS vars — override so .prose * inherits dark text */
+  --body-text-color:         #2a2118;
+  --body-text-color-subdued: #6b6258;
+  --block-text-color:        #2a2118;
+  --block-label-text-color:  #6b6258;
+  --input-text:              #2a2118;
+  --color-text-body:         #2a2118;
+}
+
 /* ── Landing / Hero ─────────────────────────────────────────────────────── */
 #wg-landing { background: var(--wg-bg) !important; }
 
@@ -309,37 +333,37 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 #wg-practice #wg-chat-shell .gap {
   background: #faf9f6 !important; border-color: #e0d8cc !important;
 }
-#wg-practice .wg-transcript { color: #2a2118; }
-#wg-practice .wg-user { color: #2d6a4f; }
+#wg-practice .wg-transcript { color: #2a2118 !important; }
+#wg-practice .wg-user { color: #2d6a4f !important; }
 #wg-practice .wg-thinking {
-  background: #f5f2eb; border-color: rgba(200,190,175,0.5); color: #6b6258;
+  background: #f5f2eb !important; border-color: rgba(200,190,175,0.5) !important; color: #6b6258 !important;
 }
 #wg-practice .wg-coach-reply {
-  background: #f0fdf4; border-color: #4ade80; border-left-color: #2d6a4f;
+  background: #f0fdf4 !important; border-color: #4ade80 !important; border-left-color: #2d6a4f !important;
 }
-#wg-practice .wg-coach-reply-header { color: #2d6a4f; }
-#wg-practice .wg-coach-reply-body   { color: #14532d; }
-#wg-practice .wg-panel-yellow { background: #fffbeb; border-color: #fbbf24; color: #78350f; }
-#wg-practice .wg-panel-yellow .wg-panel-title { color: #b45309; }
-#wg-practice .wg-panel-blue   { background: #eff6ff; border-color: #60a5fa; color: #1e3a5f; }
-#wg-practice .wg-panel-blue   .wg-panel-title { color: #2563eb; }
-#wg-practice .wg-panel-green  { background: #f0fdf4; border-color: #4ade80; color: #14532d; }
-#wg-practice .wg-panel-green  .wg-panel-title { color: #16a34a; }
-#wg-practice .wg-panel-dim    { background: #f5f5f4; border-color: #d6d3d1; color: #78716c; }
-#wg-practice .wg-dim   { color: #9e9288; }
-#wg-practice .wg-cyan  { color: #0891b2; }
-#wg-practice .wg-dim-italic { color: #9e9288; font-style: italic; }
-#wg-practice .wg-debug-toggle-line   { background: #e0d8cc; }
+#wg-practice .wg-coach-reply-header { color: #2d6a4f !important; }
+#wg-practice .wg-coach-reply-body   { color: #14532d !important; }
+#wg-practice .wg-panel-yellow { background: #fffbeb !important; border-color: #fbbf24 !important; color: #78350f !important; }
+#wg-practice .wg-panel-yellow .wg-panel-title { color: #b45309 !important; }
+#wg-practice .wg-panel-blue   { background: #eff6ff !important; border-color: #60a5fa !important; color: #1e3a5f !important; }
+#wg-practice .wg-panel-blue   .wg-panel-title { color: #2563eb !important; }
+#wg-practice .wg-panel-green  { background: #f0fdf4 !important; border-color: #4ade80 !important; color: #14532d !important; }
+#wg-practice .wg-panel-green  .wg-panel-title { color: #16a34a !important; }
+#wg-practice .wg-panel-dim    { background: #f5f5f4 !important; border-color: #d6d3d1 !important; color: #78716c !important; }
+#wg-practice .wg-dim   { color: #9e9288 !important; }
+#wg-practice .wg-cyan  { color: #0891b2 !important; }
+#wg-practice .wg-dim-italic { color: #9e9288 !important; font-style: italic; }
+#wg-practice .wg-debug-toggle-line   { background: #e0d8cc !important; }
 #wg-practice .wg-debug-toggle-label {
-  border-color: #e0d8cc; background: #f5f2eb; color: #9e9288;
+  border-color: #e0d8cc !important; background: #f5f2eb !important; color: #9e9288 !important;
 }
-#wg-practice .wg-debug-toggle-label:hover { color: #6b6258; }
-#wg-practice .wg-rule { border-color: #e0d8cc; }
-#wg-practice .wg-empty { color: #9e9288; }
+#wg-practice .wg-debug-toggle-label:hover { color: #6b6258 !important; }
+#wg-practice .wg-rule { border-color: #e0d8cc !important; }
+#wg-practice .wg-empty { color: #9e9288 !important; }
 #wg-practice #wg-sidebar {
   background: #faf9f6 !important; border-color: #e0d8cc !important;
 }
-#wg-practice .wg-sidebar-label { color: #9e9288; }
+#wg-practice .wg-sidebar-label { color: #9e9288 !important; }
 #wg-practice .wg-starter-btn button {
   background: #fff !important; border-color: #e0d8cc !important;
   color: #3d3429 !important;
@@ -663,14 +687,14 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 #wg-practice .wg-chip-label  { color: #9e9288; }
 #wg-practice .wg-avoided     { color: #9e9288; border-top-color: rgba(0,0,0,0.07); }
 #wg-practice .wg-capsule      { border-color: #e0d8cc; }
-#wg-practice .wg-capsule-head { color: #9e9288; }
-#wg-practice .wg-capsule-head:hover { color: #3d3429; background: rgba(0,0,0,0.025); }
-#wg-practice .wg-capsule-body { background: #faf9f6; color: #3d3429; border-top-color: #e0d8cc; }
+#wg-practice .wg-capsule-head { color: #9e9288 !important; }
+#wg-practice .wg-capsule-head:hover { color: #3d3429 !important; background: rgba(0,0,0,0.025) !important; }
+#wg-practice .wg-capsule-body { background: #faf9f6 !important; color: #3d3429 !important; border-top-color: #e0d8cc !important; }
 
 /* ── Light-mode overrides for mode badges ───────────────────────────────── */
-#wg-practice .wg-mode-banter { background: #dcfce7; color: #15803d; border-color: #86efac; }
-#wg-practice .wg-mode-wit    { background: #fef9c3; color: #92400e; border-color: #fde047; }
-#wg-practice .wg-mode-coach  { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+#wg-practice .wg-mode-banter { background: #dcfce7 !important; color: #15803d !important; border-color: #86efac !important; }
+#wg-practice .wg-mode-wit    { background: #fef9c3 !important; color: #92400e !important; border-color: #fde047 !important; }
+#wg-practice .wg-mode-coach  { background: #dbeafe !important; color: #1d4ed8 !important; border-color: #93c5fd !important; }
 .wg-dim { color: var(--wg-muted); }
 .wg-dim-italic { color: var(--wg-muted); font-style: italic; }
 .wg-cyan { color: #22d3ee; font-weight: 500; }
@@ -719,9 +743,9 @@ body.wg-light-mode footer { background: #fffff8 !important; }
 .wg-twist-score { color: var(--wg-yellow); min-width: 2.5rem; text-align: right; }
 
 /* Light-mode overrides for meter */
-#wg-practice .wg-twist-bar { background: #e0d8cc; }
-#wg-practice .wg-twist-score { color: #b45309; }
-#wg-practice .wg-twist-label { color: #9e9288; }
+#wg-practice .wg-twist-bar { background: #e0d8cc !important; }
+#wg-practice .wg-twist-score { color: #b45309 !important; }
+#wg-practice .wg-twist-label { color: #9e9288 !important; }
 
 /* ── Persona label + another-take ──────────────────────────────────────── */
 .wg-persona-label {
@@ -729,7 +753,7 @@ body.wg-light-mode footer { background: #fffff8 !important; }
   font-size: 0.78rem; color: var(--wg-yellow); letter-spacing: 0;
   font-weight: 400;
 }
-#wg-practice .wg-persona-label { color: #b45309; }
+#wg-practice .wg-persona-label { color: #b45309 !important; }
 
 .wg-another-take {
   float: right; cursor: pointer; font-family: 'EB Garamond', serif;
@@ -739,8 +763,8 @@ body.wg-light-mode footer { background: #fffff8 !important; }
   user-select: none;
 }
 .wg-another-take:hover { color: var(--wg-yellow); }
-#wg-practice .wg-another-take { color: #b4960a; }
-#wg-practice .wg-another-take:hover { color: #78350f; }
+#wg-practice .wg-another-take { color: #b4960a !important; }
+#wg-practice .wg-another-take:hover { color: #78350f !important; }
 
 /* ── Step-cycle loading messages ────────────────────────────────────────── */
 .wg-step-cycle {
