@@ -34,7 +34,15 @@ PERSONA_INSTRUCTIONS = {
         "State it as established fact with total sincerity. "
         "Do not hedge. Do not qualify. Do not acknowledge any other interpretation exists. "
         "The belief should be wrong in a way that exposes something true about the speaker. "
-        "No irony. No wink. Absolute conviction."
+        "No irony. No wink. Absolute conviction.\n\n"
+        "Worldview seed — pick the one matching the archetype field above and speak from inside it:\n"
+        "- status_assertion: 'Success is a social contract. Claiming it publicly is legally binding.'\n"
+        "- self_delusion: 'Self-awareness is a hobby. Confidence is infrastructure.'\n"
+        "- anxiety_escalation: 'Being prepared means announcing every possible failure in advance.'\n"
+        "- social_fail: 'Social norms are suggestions. The boldest person defines the room.'\n"
+        "- power_inversion: 'The person who asks the fewest questions is clearly the most senior.'\n"
+        "- misplaced_conf: 'Certainty is competence. You can always correct course once everyone agrees.'\n"
+        "Inhabit that worldview completely. Do not name it."
     ),
     "absurdist": (
         "PATHWAY SELECTION — pick one silently before generating:\n"
@@ -94,7 +102,7 @@ CONSTRAINTS (ALL must be satisfied):
 5. Lead with the punchline. Do not build up to it.
 6. No preamble. No "Here's a response:". No hedging. Start with the wit directly.
 7. Stay benign. The violation must be recognizable, not offensive.
-8. Suppress this boring response style: "{obvious_response}"
+8. The boring version of this would be: "{obvious_response}". The better version doesn't avoid that — it finds the specific truth underneath it. What is the precise mechanism they are using? What does it cost them that they haven't named?
 9. NEVER output "PATH A", "PATH B", "PATHWAY SELECTION", or any routing label. Output ONLY the comedy line.
 10. If any phrase from the precedent block appears in your line, rewrite it — use the mechanism only, never the precedent's wording.
 11. DOMAIN ANCHOR — Do not introduce institutions, departments, legal process, or workplace nouns unless already implied by surface, subtext, or power_dynamic. Prefer nouns from the user input.
@@ -380,6 +388,8 @@ Pick the funniest one using this exact priority order:
 A sharp 20-word line with a specific concrete ending beats a flat 10-word line of jargon.
 Responses that are purely bureaucratic or purely abstract always lose, regardless of length.
 
+Final-word test: Read the last word of each candidate. If the last word is an abstract noun, institutional term, or connector word (e.g. 'their', 'itself', 'you', 'it', 'this', 'that'), the punchline is buried — rank it below candidates whose final word is a concrete noun, unexpected verb, or specific image, even if the rest of that line is stronger.
+
 Reply ONLY with a single digit ({valid_digits}). Nothing else."""
 
 
@@ -468,7 +478,7 @@ def rank_candidates(
 
 
 _COMPRESS_PROMPT = """\
-The following comedy line is good but possibly too long. Compress it to ≤18 words while keeping the punchline completely intact.
+The following comedy line is good but possibly too long. Compress it to ≤22 words while keeping the punchline completely intact.
 
 Original: "{winner}"
 
@@ -485,7 +495,7 @@ def compress_winner(winner: str, model, tokenizer) -> str:
     Skipped if winner is already ≤18 words (already tight).
     Guards: rejects output that is < 4 words or longer than the original.
     """
-    if len(winner.split()) <= 18:
+    if len(winner.split()) <= 22:
         return winner  # Already tight — skip the LLM call
 
     prompt = _COMPRESS_PROMPT.format(winner=winner)
@@ -523,7 +533,7 @@ def compress_winner(winner: str, model, tokenizer) -> str:
 
 def compress_winner_stream(winner: str, model, tokenizer) -> Iterator[tuple[str, str]]:
     """Stream compress pass tokens, or yield skip when already tight."""
-    if len(winner.split()) <= 18:
+    if len(winner.split()) <= 22:
         yield ("skip", winner)
         return
 
