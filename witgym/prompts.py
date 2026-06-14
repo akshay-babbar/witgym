@@ -68,6 +68,20 @@ Return ONLY a JSON object with these exact fields (no explanation, no markdown, 
 Focus on the awkward social moment in the follow-up. Ignore phrases like "teach me" or "how should I respond" — extract comedy structure from the situation itself.
 Return ONLY the JSON. Nothing else."""
 
+DRILL_KEYS = {
+    "Make that line sharper and more cutting": "sharpen",
+    "Give me a completely different angle on the same situation": "angle",
+    "Explain why that line works — what comedy principle does it use?": "explain",
+}
+
+SHARPEN_PROMPT = """\
+The situation: {situation}
+Previous line: "{joke}"
+What it's really about (subtext): {subtext}
+
+Make this line sharper and more cutting. Keep the same situation and subtext.
+One line. Nothing else."""
+
 EXPLAIN_PROMPT = """\
 You just delivered this comedy line: "{joke}"
 

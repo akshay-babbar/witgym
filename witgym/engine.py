@@ -19,7 +19,7 @@ from witgym.generator import (
 )
 from witgym.conversation import ConversationManager
 from witgym.router import classify_intent
-from witgym.prompts import BANTER_PROMPT, COACHING_ASK_PROMPT, EXPLAIN_PROMPT
+from witgym.prompts import BANTER_PROMPT, COACHING_ASK_PROMPT, EXPLAIN_PROMPT, SHARPEN_PROMPT, DRILL_KEYS
 
 _shared_resources = None
 
@@ -95,6 +95,7 @@ class WitGymEngine:
         else:
             self._resources = resources
         self.conversation = conversation or ConversationManager()
+        self._last_wit_response: Optional[WitGymResponse] = None
         logger.success("WitGymEngine ready.")
 
     @property
@@ -125,6 +126,11 @@ class WitGymEngine:
 
     def respond_stream(self, user_input: str) -> Iterator[PipelineEvent]:
         """Incremental pipeline for Gradio streaming UI."""
+        drill_type = DRILL_KEYS.get(user_input.strip())
+        if drill_type and self._last_wit_response is not None:
+            yield from self._handle_drill(drill_type, self._last_wit_response)
+            return
+
         if self.conversation.coaching_state.get("awaiting"):
             from witgym.router import _heuristic_route
             if _heuristic_route(user_input) == "banter" or len(user_input.strip()) < 5:
@@ -157,6 +163,7 @@ class WitGymEngine:
     def _handle_banter(self, user_input: str) -> Iterator[PipelineEvent]:
         logger.info("Banter route — dynamic reply")
         self.conversation.set_mode("banter")
+        self._last_wit_response = None
         reply = generate_text(
             BANTER_PROMPT.format(user_input=user_input),
             self.model,
@@ -204,6 +211,55 @@ class WitGymEngine:
         yield PipelineEvent(phase="coaching_ask", partial_text=question, response=response)
         yield PipelineEvent(phase="done", response=response)
 
+    def _handle_drill(self, drill_type: str, last: WitGymResponse) -> Iterator[PipelineEvent]:
+        """Refine the last wit response. Does NOT call add_turn() — no memory pollution."""
+        joke = last.selected
+        metadata = last.metadata
+
+        if drill_type == "angle":
+            yield from self._run_wit_pipeline(
+                metadata.surface,
+                route=last.route,
+                exclude_joke=joke,
+            )
+            return
+
+        if drill_type == "sharpen":
+            situation = last.retrieved_scenes[0].setup if last.retrieved_scenes else metadata.surface
+            reply = generate_text(
+                SHARPEN_PROMPT.format(situation=situation, joke=joke, subtext=metadata.subtext),
+                self.model, self.tokenizer, config_type="generate",
+            )
+            reply = _cap_two_sentences(reply.strip())
+            self._last_wit_response = WitGymResponse(
+                metadata=metadata,
+                retrieved_scenes=last.retrieved_scenes,
+                candidates=last.candidates,
+                selected=reply,
+                route=last.route,
+                winning_persona=last.winning_persona,
+            )
+        else:  # explain
+            reply = generate_text(
+                EXPLAIN_PROMPT.format(
+                    joke=joke,
+                    archetype=metadata.archetype.value,
+                    subtext=metadata.subtext,
+                ),
+                self.model, self.tokenizer, config_type="generate",
+            )
+            reply = _cap_two_sentences(reply.strip())
+
+        response = WitGymResponse(
+            metadata=metadata,
+            retrieved_scenes=last.retrieved_scenes,
+            candidates=last.candidates,
+            selected=reply,
+            route="drill",
+        )
+        yield PipelineEvent(phase="banter", response=response)
+        yield PipelineEvent(phase="done", response=response)
+
     def _run_wit_pipeline(
         self,
         user_input: str,
@@ -212,6 +268,7 @@ class WitGymEngine:
         display_input: Optional[str] = None,
         coaching_context: Optional[tuple[str, str]] = None,
         include_explanation: bool = False,
+        exclude_joke: Optional[str] = None,
     ) -> Iterator[PipelineEvent]:
         """CBR-RAG pipeline shared by quick_wit and coaching Turn 2."""
         turn_user_input = display_input or user_input
@@ -252,6 +309,8 @@ class WitGymEngine:
         yield PipelineEvent(phase="scenes", metadata=metadata, scenes=scenes)
 
         context_str = self.conversation.get_context_string()
+        if exclude_joke:
+            context_str = f"[Previous line — do NOT repeat]: {exclude_joke}\n" + context_str
         personas_to_run = ["cynic", "conviction", "absurdist"]
         if metadata.twist_potential <= 6:
             personas_to_run = ["cynic", "conviction"]
@@ -396,4 +455,5 @@ class WitGymEngine:
             winning_persona=winning_persona,
             explanation=explanation,
         )
+        self._last_wit_response = response
         yield PipelineEvent(phase="done", response=response)

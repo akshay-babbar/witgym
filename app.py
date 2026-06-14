@@ -72,10 +72,12 @@ STARTERS = [
     ("Coach me",       "Help me respond when someone asks about my job and I don't know what to say."),
 ]
 
+from witgym.prompts import DRILL_KEYS as _DRILL_KEYS
+_drill_text = {v: k for k, v in _DRILL_KEYS.items()}
 DRILL_ACTIONS = [
-    ("sharpen it",        "Make that line sharper and more cutting"),
-    ("different angle",   "Give me a completely different angle on the same situation"),
-    ("explain the joke",  "Explain why that line works — what comedy principle does it use?"),
+    ("sharpen it",       _drill_text["sharpen"]),
+    ("different angle",  _drill_text["angle"]),
+    ("explain the joke", _drill_text["explain"]),
 ]
 
 TRANSCRIPT_MIN_HEIGHT = 440
