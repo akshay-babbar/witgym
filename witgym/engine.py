@@ -314,8 +314,8 @@ class WitGymEngine:
             context_str = f"[Previous line — do NOT repeat]: {exclude_joke}\n" + context_str
         personas_to_run = ["cynic", "conviction", "absurdist"]
         if metadata.twist_potential <= 6:
-            personas_to_run = ["cynic", "conviction"]
-            logger.info(f"twist_potential={metadata.twist_potential} ≤ 6 — cynic + conviction (orthogonal pair)")
+            personas_to_run = ["cynic", "absurdist"]
+            logger.info(f"twist_potential={metadata.twist_potential} ≤ 6 — cynic + absurdist")
         elif metadata.twist_potential > 8:
             personas_to_run = ["cynic", "absurdist", "bisociate"]
             logger.info(f"twist_potential={metadata.twist_potential} > 8 — bisociate replaces conviction")

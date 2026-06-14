@@ -83,13 +83,26 @@ def _parse_route(raw: str) -> Route | None:
 
 
 def classify_intent(text: str, model, tokenizer) -> Route:
-    """Route banter | quick_wit | coaching via LLM, with heuristic fallback."""
+    """Route banter | quick_wit | coaching via LLM, with heuristic fallback.
+
+    Heuristic takes priority when there is no explicit coaching signal — avoids
+    LLM misclassifying confessional 'I just X' situations as coaching.
+    """
     from witgym.model import generate_text
 
     if not text.strip():
         return "banter"
 
+    normalized = text.strip().lower()
+    has_coaching_signal = any(sig in normalized for sig in _COACHING_SIGNALS)
+
     heuristic = _heuristic_route(text)
+
+    # Skip LLM router when heuristic is confident and no explicit coaching signal:
+    # this prevents the LLM from misrouting confessional situation inputs to coaching.
+    if heuristic == "quick_wit" and not has_coaching_signal:
+        logger.info(f"Router: heuristic fast-path → 'quick_wit' for {text[:60]!r}")
+        return "quick_wit"
 
     raw = generate_text(
         ROUTER_PROMPT.format(user_input=text.strip()),
@@ -104,5 +117,5 @@ def classify_intent(text: str, model, tokenizer) -> Route:
         )
         route = heuristic
     else:
-        logger.info(f"Router: {route!r} for input {text[:60]!r}")
+        logger.info(f"Router: LLM → {route!r} for input {text[:60]!r}")
     return route

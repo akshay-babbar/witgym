@@ -28,14 +28,15 @@ Return ONLY a JSON object with these exact fields (no explanation, no markdown, 
 }}
 
 Think carefully about the ARCHETYPE — pick the one that most accurately describes the comedy mechanism hiding in this input.
-Archetype selection guidance (avoid overusing self_delusion):
-- status_assertion: claiming authority/status/rightness as if saying it makes it true
-- misplaced_conf: confident competence claim immediately unsupported by reality
-- anxiety_escalation: small trigger spun into catastrophe / inevitable doom logic
-- social_fail: awkward performance, norm violation, cringe, saying the wrong thing at the wrong time
-- power_inversion: low-status person is the only honest/correct one, or social power overrides institutional power
-- self_delusion: specifically a self-image story ("I'm fine / I'm great / I'm the best") contradicted by behavior/evidence in the same moment
-If unsure between self_delusion vs social_fail/anxiety_escalation, prefer the more specific one (social_fail/anxiety_escalation) unless there is an explicit self-image contradiction.
+Archetype selection guidance (avoid overusing social_fail — use it only for literal norm violations):
+- status_assertion: claiming authority/status/rightness as if saying it makes it true (e.g. "I just got promoted and have no idea what I'm doing" — claiming the title while admitting incompetence)
+- misplaced_conf: confident competence claim immediately unsupported by reality (e.g. "my boss called a quick sync that's been going for two hours" — the word "quick" is the mismatch)
+- anxiety_escalation: small trigger spun into catastrophe / inevitable doom logic (e.g. "my coworker keeps stealing my lunch" — escalating a minor loss into a power/control spiral)
+- social_fail: awkward performance, norm violation, cringe — ONLY when the person did/said something embarrassing in public (e.g. "I waved back at someone who wasn't waving at me" — literal public norm violation)
+- power_inversion: low-status person is the only honest/correct one, or the person with formal authority is visibly incompetent (e.g. "my therapist fell asleep during our session" — the helper needs help)
+- self_delusion: specifically a self-image story ("I'm fine / I'm great / I'm the best") contradicted by behavior/evidence (e.g. "I'm pretending to understand cryptocurrency at dinner parties" — actively constructing a false expert identity)
+CRITICAL: Do NOT use social_fail as a default. Most awkward situations are self_delusion, anxiety_escalation, power_inversion, or misplaced_conf. social_fail requires a public embarrassing action the person actually performed.
+If unsure between self_delusion vs social_fail, ask: did the person DO something publicly awkward (social_fail) or are they MAINTAINING a false self-image (self_delusion)?
 For twist_potential: score high if the input has self-delusion, status gap, or absurd logic. Score low if it is a neutral factual statement with no tension.
 If the input is ONLY a greeting, social opener, or typo-greeting with no described situation, set twist_potential to 1 and subtext to "greeting only — no situational content". Do not invent comedy tension.
 For connector: look for a single word or short phrase that carries an expected meaning in context AND a second meaning that reframes the situation. Most inputs will have null. Return null unless a genuine dual-reading exists (e.g. "manage" can mean control people or barely cope; "balance" can mean financial or emotional equilibrium).
