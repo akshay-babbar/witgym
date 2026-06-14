@@ -23,7 +23,7 @@ EXTRACT_TEMP = 0.2
 EXTRACT_DO_SAMPLE = False
 GENERATE_TEMP = 1.0  # slightly lower to reduce arbitrary domain invention
 GENERATE_MIN_P = 0.06
-GENERATE_MAX_NEW_TOKENS = 40
+GENERATE_MAX_NEW_TOKENS = 72
 RANK_TEMP = 0.1
 EXTRACT_MAX_NEW_TOKENS = 220   # JSON never exceeds ~150 tokens; 220 = 47% safety margin
 
