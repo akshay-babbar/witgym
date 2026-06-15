@@ -1,5 +1,6 @@
 # Local index is generated; large transcripts live on HF dataset repo
 data/*
+!data/public_traces.jsonl
 !data/transcripts/
 !data/transcripts/**
 data/transcripts/office_generated.txt
@@ -45,6 +46,7 @@ coverage.xml
 # IDE and editors
 .idea/
 .vscode/
+docs/private-demo-pitch.md
 *.swp
 *.swo
 *~
