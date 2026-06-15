@@ -26,14 +26,21 @@ tags:
 
 # 🎭 WitGym
 
-**One sharp line, grounded in human precedent. Then drills to sharpen it.**
+**One sharp line, grounded in human precedent — then drills to sharpen it.**
 
-WitGym is a comedy coaching engine for awkward real-life moments. It extracts the **comedy structure**, retrieves analogous precedent from *The Office*, drafts constrained persona candidates, runs a **tournament ranker**, and returns one crisp line with optional coaching.
+WitGym is a comedy coaching engine for awkward real‑life moments. Paste what happened and it returns **one usable line** (not a paragraph), grounded in structurally similar precedent from *The Office* — then lets you iterate with drills: **sharpen it**, **different angle**, **explain why it works**.
 
 **Live Space**: [build-small-hackathon/WitGym](https://huggingface.co/spaces/build-small-hackathon/WitGym)
 
-### Why I built this
-Comedy has always been a personal interest — not just watching it, but understanding how a line lands. I wanted a **humor coach** for real awkward moments: paste what happened, get one sharp line, then drill on it. *The Office* felt like the right precedent library (I'm a longtime fan) — not to impersonate characters, but to learn from situations that already work. WitGym is my attempt to make that coach real under the ≤32B constraint.
+### Why I built this (and why it’s not “just prompt it to be funny”)
+Comedy has always been a personal interest — not just watching it, but reverse‑engineering why a line lands. Most “be funny” apps are vibes: you get a wall of text and no way to improve it.
+
+WitGym treats wit like a skill you can train:
+- **Extract the mechanism** (status games, tension, violation distance, subtext)
+- **Retrieve precedent by structure** (not by topic keywords)
+- **Draft a few constrained options**
+- **Pick a winner with an explicit rubric**
+- **Polish to one sharp line**
 
 ### 30‑second demo
 - Paste: “My boss says he trusts me, but he rewrites every message I send.”
@@ -41,24 +48,72 @@ Comedy has always been a personal interest — not just watching it, but underst
 - Tap drills: **sharpen it**, **different angle**, **explain the joke**
 
 ### What makes it different
-- **CBR‑RAG on comedy mechanics**: retrieve by archetype, tension, and violation distance — not topic keywords
-- **Behavioral observation as the generative seed**: name the human move, then write from that
-- **Tournament ranking for landing**: truth precision, final-clause quality, domain anchoring
-- **Inspectable traces**: progressive disclosure in the UI; public JSONL export for Sharing is Caring
+- **CBR‑RAG on comedy mechanics**: retrieval is driven by archetype, tension, violation distance, and subtext — not by copying jokes or matching keywords.
+- **Small‑model friendly by design**: the intelligence is in the pipeline and the precedent index, not “bigger weights.”
+- **Tournament ranking (not one-shot generation)**: the best line is selected by a fixed rubric (domain anchoring + final-clause punchline quality + sharpness).
+- **Inspectable traces**: the UI shows what the system did (progressive disclosure), plus a sanitized public trace export.
 
-### How it works
-1. **Extract** — `Qwen/Qwen3.5-27B` → `ComedyMetadata` (12 fields)
-2. **Retrieve** — `BAAI/bge-small-en-v1.5` cosine pool + optional `cross-encoder/ettin-reranker-32m-v1`
-3. **Generate** — 2–3 twist-gated persona candidates
-4. **Rank** — fixed rubric selects the winner
-5. **Compress** — optional polish to one sharp line
+### System overview (high-level)
+
+```mermaid
+flowchart TD
+  UserInput["User: paste awkward moment"] --> Router{"Route?"}
+  Router -->|banter| Banter["One-sentence banter reply"]
+  Router -->|coaching| CoachAsk["Ask 1 clarifying question"]
+  Router -->|quick_wit| Pipeline["CBR-RAG wit pipeline"]
+
+  CoachAsk --> Pipeline
+
+  Pipeline --> Extract["Pass1: Extract ComedyMetadata (Qwen3.5-27B)"]
+  Extract --> Retrieve["Retrieve precedent scenes (bge-small + optional rerank)"]
+  Retrieve --> Generate["Pass2: Draft 2–3 persona candidates"]
+  Generate --> Rank["Pass3: Rank by explicit rubric"]
+  Rank --> Compress["Pass4: Optional compression to one sharp line"]
+  Compress --> Output["One final line + optional explain/sharpen drills"]
+```
+
+### Algorithm sketch (pipeline-level)
+
+```mermaid
+sequenceDiagram
+  participant UI as GradioUI
+  participant Engine as WitGymEngine
+  participant LLM as Qwen3_5_27B
+  participant Embed as BGE_small
+  participant Index as OfficeIndex
+
+  UI->>Engine: respond_stream(user_input)
+  Engine->>LLM: Extract ComedyMetadata (JSON)
+  LLM-->>Engine: metadata
+  Engine->>Embed: encode(metadata_query)
+  Embed-->>Engine: query_embedding
+  Engine->>Index: cosine_search + optional rerank
+  Index-->>Engine: precedent_scenes
+  Engine->>LLM: Draft candidates (persona-gated)
+  LLM-->>Engine: 2–3 candidates
+  Engine->>LLM: Rank candidates (rubric)
+  LLM-->>Engine: winner
+  Engine->>LLM: Compress winner (optional)
+  LLM-->>Engine: final_line
+  Engine-->>UI: stream phases + final_line
+```
 
 ### Evidence / badges
-- **Sharing is Caring** (`achievement:sharing`): [public pipeline traces](data/public_traces.jsonl) — sanitized JSONL (metadata, scene IDs, candidate stats, execution log; no Office dialogue text). Regenerate: `uv run python scripts/export_public_traces.py`
-- **Field Notes** (`achievement:fieldnotes`): [docs/field-notes.md](docs/field-notes.md)
-- **Off‑Brand UI** (`achievement:offbrand`): custom Gradio UI + streaming trace disclosure
+- **Sharing is Caring** (`achievement:sharing`): [public pipeline traces](data/public_traces.jsonl) — sanitized JSONL (metadata, scene IDs, candidate stats, execution log; no Office dialogue text). Regenerate with `uv run python scripts/export_public_traces.py`.
+- **Field Notes** (`achievement:fieldnotes`): [docs/field-notes.md](docs/field-notes.md).
+- **Off‑Brand UI** (`achievement:offbrand`): custom Gradio UI + streaming trace disclosure.
 
-> **Validator**: add demo video + social post links here before submission. [Validate README](https://build-small-hackathon-field-guide.hf.space/submit)
+### Submission links
+- **Demo video**: [YouTube](https://youtu.be/enb5ua65RZM)
+- **Social post**: [LinkedIn](https://www.linkedin.com/posts/akshay4b_happy-to-share-a-project-ive-been-building-ugcPost-7472401282822111232-Q_nt/)
+- **Validate README**: [Build Small validator](https://build-small-hackathon-field-guide.hf.space/submit)
+
+### Technical details (grounded in the repo)
+- **Engine entrypoint**: `witgym/engine.py` (`respond()` + `respond_stream()`).
+- **Pass 1 extraction**: `witgym/extractor.py` → `ComedyMetadata` (JSON).
+- **Retrieval**: `witgym/retriever.py` (cosine over an indexed embedding matrix; optional cross-encoder rerank).
+- **Pass 2 generation + ranking**: `witgym/generator.py` (persona candidates + rubric ranker).
+- **UI**: `app.py` (Gradio; streaming phases + progressive disclosure).
 
 ### Run locally
 
