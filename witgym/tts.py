@@ -42,13 +42,13 @@ def _client(provider: str) -> InferenceClient:
     return InferenceClient(
         provider=provider,
         api_key=config.HF_TOKEN or None,
-        timeout=config.HF_API_TIMEOUT,
+        timeout=config.TTS_API_TIMEOUT,
     )
 
 
 def synthesize_line(text: str, character: str = "AI") -> str | None:
     """Return a data URL for generated audio, or None on failure."""
-    if not config.TTS_ENABLED or not config.HF_TOKEN:
+    if not config.TTS_ENABLED:
         return None
 
     text = (text or "").strip()

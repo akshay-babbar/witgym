@@ -561,15 +561,23 @@ def compress_winner_stream(winner: str, model, tokenizer) -> Iterator[tuple[str,
     for token in generate_text_stream(prompt, model, tokenizer, config_type="extract"):
         parts.append(token)
         yield ("token", token)
-    compressed = _strip_thinking("".join(parts)).strip().strip('"').strip("'")
+    raw = _strip_thinking("".join(parts)).strip()
 
-    # Defensive JSON parse: model sometimes wraps output as {"compressed_line": "..."}
-    if compressed.startswith("{"):
+    # Defensive extraction: model sometimes returns plain text, pure JSON,
+    # or a messy plain-text prefix followed by {"compressed_line": "..."}.
+    compressed = raw
+    json_match = _re.search(r'"compressed_line"\s*:\s*"((?:[^"\\]|\\.)*)"', raw)
+    if json_match:
         try:
-            obj = _json.loads(compressed)
-            compressed = next(iter(obj.values())) if obj else compressed
+            compressed = _json.loads(f'"{json_match.group(1)}"')
         except Exception:
-            pass
+            compressed = json_match.group(1)
+    elif raw.startswith("{"):
+        try:
+            obj = _json.loads(raw)
+            compressed = next(iter(obj.values())) if obj else raw
+        except Exception:
+            compressed = raw
     compressed = str(compressed).strip().strip('"').strip("'")
 
     _FRAGMENT_STARTS = (
@@ -598,4 +606,3 @@ def compress_winner_stream(winner: str, model, tokenizer) -> Iterator[tuple[str,
 
     logger.info(f"Compressed: {len(winner.split())}w → {len(compressed.split())}w | '{compressed}'")
     yield ("done", compressed)
-
