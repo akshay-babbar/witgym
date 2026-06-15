@@ -1,9 +1,10 @@
-"""Local Kokoro-82M TTS — runs on-device, no API calls, no provider dependency."""
+"""TTS via HF Inference API (facebook/mms-tts-eng), Kokoro fallback for local dev."""
 
 from __future__ import annotations
 
 import base64
 import io
+import os
 import wave
 from threading import Lock
 
@@ -11,6 +12,45 @@ import numpy as np
 from loguru import logger
 
 from witgym import config
+
+# ── HF Inference API ──────────────────────────────────────────────────────────
+
+_TTS_MODEL = "facebook/mms-tts-eng"
+_TTS_API_URL = f"https://api-inference.huggingface.co/models/{_TTS_MODEL}"
+
+
+def _hf_token() -> str | None:
+    return (
+        os.getenv("HF_TOKEN")
+        or os.getenv("HUGGING_FACE_HUB_TOKEN")
+    )
+
+
+def _synthesize_via_api(text: str) -> str | None:
+    """Call HF Inference API, return base64 data URL or None."""
+    token = _hf_token()
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    try:
+        import requests  # transitive dep via huggingface-hub
+        r = requests.post(
+            _TTS_API_URL,
+            headers=headers,
+            json={"inputs": text},
+            timeout=12,
+        )
+        if r.status_code == 200 and r.content:
+            ct = r.headers.get("content-type", "audio/flac").split(";")[0].strip()
+            b64 = base64.b64encode(r.content).decode("ascii")
+            return f"data:{ct};base64,{b64}"
+        logger.warning(f"HF TTS API returned {r.status_code}: {r.text[:200]}")
+    except Exception as exc:
+        logger.warning(f"HF TTS API error: {exc}")
+    return None
+
+
+# ── Kokoro local fallback (used when no network / local dev) ──────────────────
 
 _FEMALE_VOICES = {
     "AI": "af_bella",
@@ -51,7 +91,7 @@ def _get_pipeline():
             return _pipeline
         try:
             from kokoro import KPipeline
-            logger.info("Loading Kokoro-82M pipeline (first call)…")
+            logger.info("Loading Kokoro-82M pipeline (local fallback)…")
             _pipeline = KPipeline(lang_code="a")
             logger.info("Kokoro-82M ready.")
         except Exception as exc:
@@ -60,18 +100,10 @@ def _get_pipeline():
     return _pipeline
 
 
-def synthesize_line(text: str, character: str = "AI") -> str | None:
-    """Return a WAV data URL for the text, or None on failure."""
-    if not config.TTS_ENABLED:
-        return None
-    text = (text or "").strip()
-    if not text:
-        return None
-
+def _synthesize_via_kokoro(text: str, character: str) -> str | None:
     pipeline = _get_pipeline()
     if pipeline is None:
         return None
-
     voice = _voice_for_character(character or "AI")
     try:
         chunks = [audio for _, _, audio in pipeline(text, voice=voice)]
@@ -90,3 +122,23 @@ def synthesize_line(text: str, character: str = "AI") -> str | None:
     except Exception as exc:
         logger.warning(f"Kokoro TTS failed voice={voice}: {exc}")
         return None
+
+
+# ── Public API ────────────────────────────────────────────────────────────────
+
+def synthesize_line(text: str, character: str = "AI") -> str | None:
+    """Return a data URL for the synthesized audio, or None on failure."""
+    if not config.TTS_ENABLED:
+        return None
+    text = (text or "").strip()
+    if not text:
+        return None
+
+    # Try HF API first (fast, works on Spaces)
+    result = _synthesize_via_api(text)
+    if result:
+        return result
+
+    # Kokoro fallback (local dev, character-specific voices)
+    logger.info("HF API TTS unavailable, falling back to Kokoro")
+    return _synthesize_via_kokoro(text, character)
