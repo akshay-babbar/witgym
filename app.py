@@ -84,7 +84,7 @@ TRANSCRIPT_MIN_HEIGHT = 440
 TRANSCRIPT_MAX_HEIGHT = 580
 
 # ── Mascot SVG ────────────────────────────────────────────────────────────────
-_MASCOT = """<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="wg-mascot" width="108" height="108" aria-hidden="true">
+_MASCOT = """<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="wg-mascot" width="80" height="80" aria-hidden="true">
   <circle cx="50" cy="50" r="44" fill="#f0ebe0" stroke="#d4cfc0" stroke-width="1.5"/>
   <rect x="7"  y="34" width="35" height="22" rx="6" fill="#1a3d2b"/>
   <rect x="58" y="34" width="35" height="22" rx="6" fill="#1a3d2b"/>
@@ -97,7 +97,7 @@ APP_CSS = """
 
 /* ── Global dark base ──────────────────────────────────────────────────── */
 body, .gradio-container, .main { background: #141414 !important; }
-footer { display: none !important; }
+footer { display: none !important; height: 0 !important; padding: 0 !important; margin: 0 !important; overflow: hidden !important; }
 
 /* ── Light mode (activated on START TRAINING) ──────────────────────────── */
 body.wg-light-mode,
@@ -142,7 +142,15 @@ body.wg-light-mode footer { display: none !important; }
 }
 
 /* ── Landing / Hero ─────────────────────────────────────────────────────── */
-#wg-landing { background: var(--wg-bg) !important; }
+#wg-landing { background: transparent !important; flex: 1 !important; min-height: 100% !important; }
+/* Remove all border/box-shadow artifacts on the landing column and its direct rows */
+#wg-landing, #wg-landing > .row, #wg-landing > .block { border: none !important; box-shadow: none !important; }
+/* Hero's .block wrapper must be a flex item for .wg-hero { flex:1 } to grow it */
+#wg-landing > .block:first-child { flex: 1 !important; display: flex !important; flex-direction: column !important; }
+/* Hero fills the full .block height so dot-grid spans the header zone */
+.wg-hero { flex: 1; }
+/* Eat the bottom padding of .main so footer gap is as small as possible */
+body:not(.wg-light-mode) .main { padding-bottom: 0 !important; }
 /* Collapse Gradio's default gap between HTML components in landing */
 #wg-landing > .svelte-1plpy97, #wg-landing > div { gap: 0 !important; }
 #wg-landing .gap-4 { gap: 0 !important; }
@@ -152,12 +160,11 @@ body.wg-light-mode footer { display: none !important; }
   position: relative;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  /* Dot grid lives in background shorthand — eliminates the ::before stacking context
-     that caused the wordmark to render behind the grid on HF Spaces SSR */
+  /* Dot grid scoped to hero only — footer gap below START TRAINING stays solid dark */
   background:
     radial-gradient(circle, rgba(245,197,24,0.18) 1px, transparent 2px) center/24px 24px,
     var(--wg-bg);
-  padding: 0.4rem 1rem 0; text-align: center;
+  padding: 0.75rem 1rem 0.75rem; text-align: center;
 }
 
 /* ● REC indicator — bigger, more visible flicker */
@@ -187,16 +194,21 @@ body.wg-light-mode footer { display: none !important; }
   margin-bottom: 0.25rem; position: relative; z-index: 1;
 }
 
+/* Vertical logo: mascot on top, WIT GYM single line below */
+.wg-logo-row {
+  display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+  position: relative; z-index: 1; margin-bottom: 0.1rem;
+}
 /* Mascot */
-.wg-mascot { margin-bottom: 0; position: relative; z-index: 1;
-  filter: drop-shadow(0 4px 20px rgba(45,106,79,0.3)); transform: scale(0.58); }
+.wg-mascot { position: relative; z-index: 1;
+  filter: drop-shadow(0 4px 20px rgba(45,106,79,0.3)); }
 
-/* WIT / GYM wordmark */
-.wg-wordmark { display: flex; flex-direction: column; align-items: center;
-  line-height: 0.88; margin-bottom: 0.15rem; position: relative; z-index: 1; }
+/* WIT GYM on one horizontal line */
+.wg-wordmark { display: flex; flex-direction: row; align-items: baseline;
+  gap: 0.25em; line-height: 1; position: relative; z-index: 1; }
 .wg-wordmark-wit, .wg-wordmark-gym {
   font-family: 'Bebas Neue', Impact, 'Arial Black', sans-serif;
-  font-size: clamp(2rem, 5.5vw, 3rem); letter-spacing: 0.03em;
+  font-size: clamp(3.5rem, 8vw, 5.5rem); letter-spacing: 0.03em;
 }
 /* Hardcoded hex + !important: Gradio 6 SSR on HF Spaces injects theme CSS after APP_CSS,
    causing same-specificity cascade override of var(--wg-white/yellow). */
@@ -265,7 +277,7 @@ body.wg-light-mode footer { display: none !important; }
 /* ── Coaching panel ─────────────────────────────────────────────────────── */
 .wg-coach-panel {
   width: 100%; padding: 0.2rem 1rem 0.15rem;
-  background: var(--wg-bg); border-top: 1px solid #2a2a2a;
+  background: var(--wg-bg); border-top: none;
 }
 .wg-coach-divider {
   display: flex; align-items: center; gap: 1rem; margin-bottom: 0.2rem;
@@ -998,7 +1010,7 @@ body.wg-light-mode footer { display: none !important; }
 }
 /* Dot indicators */
 .wg-arcade-dots {
-  display: flex; justify-content: center; gap: 0.35rem; margin: 0.2rem 0 0.1rem;
+  display: flex; justify-content: center; gap: 0.5rem; margin: 0.6rem 0 0.25rem;
 }
 .wg-arcade-dot {
   width: 6px; height: 6px; border-radius: 50%;
@@ -1769,11 +1781,12 @@ def _landing_html() -> str:
     return (
         f'<div class="wg-hero">'
         f'<div class="wg-rec"><span class="wg-rec-dot"></span>REC</div>'
-        f'<div class="wg-kicker">Paste awkward &mdash; get one line that lands</div>'
+        f'<div class="wg-logo-row">'
         f'{_MASCOT}'
         f'<div class="wg-wordmark">'
         f'<div class="wg-wordmark-wit">WIT</div>'
         f'<div class="wg-wordmark-gym">GYM</div>'
+        f'</div>'
         f'</div>'
         f'</div>'
     )
@@ -1945,7 +1958,6 @@ def build_ui():
         # ── Landing screen ────────────────────────────────────────
         with gr.Column(visible=True, elem_id="wg-landing") as landing_col:
             gr.HTML(_landing_html())
-            gr.HTML('<p class="wg-start-hint">Select your coach · or click Start Training to let AI choose</p>')
             gr.HTML(_coaching_panel_html())
             with gr.Row(elem_id="wg-start-btn"):
                 start_btn = gr.Button("START TRAINING →", variant="primary", size="lg")
