@@ -1593,6 +1593,7 @@ window.wgOpenScene = function(character, show, setup, response, why, avatarUrl, 
     var rightIdx = (_idx + 1) % chars.length;
     _renderPeek('left', leftIdx, chars);
     _renderPeek('right', rightIdx, chars);
+    window._wgSelectedChar = c;
   };
 
   window.wgArcadeMove = function(dir) {
