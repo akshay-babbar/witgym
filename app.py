@@ -84,7 +84,7 @@ TRANSCRIPT_MIN_HEIGHT = 440
 TRANSCRIPT_MAX_HEIGHT = 580
 
 # ── Mascot SVG ────────────────────────────────────────────────────────────────
-_MASCOT = """<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="wg-mascot" width="108" height="108" aria-hidden="true">
+_MASCOT = """<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="wg-mascot" width="80" height="80" aria-hidden="true">
   <circle cx="50" cy="50" r="44" fill="#f0ebe0" stroke="#d4cfc0" stroke-width="1.5"/>
   <rect x="7"  y="34" width="35" height="22" rx="6" fill="#1a3d2b"/>
   <rect x="58" y="34" width="35" height="22" rx="6" fill="#1a3d2b"/>
@@ -97,7 +97,7 @@ APP_CSS = """
 
 /* ── Global dark base ──────────────────────────────────────────────────── */
 body, .gradio-container, .main { background: #141414 !important; }
-footer { display: none !important; }
+footer { display: none !important; height: 0 !important; padding: 0 !important; margin: 0 !important; overflow: hidden !important; }
 
 /* ── Light mode (activated on START TRAINING) ──────────────────────────── */
 body.wg-light-mode,
@@ -142,18 +142,29 @@ body.wg-light-mode footer { display: none !important; }
 }
 
 /* ── Landing / Hero ─────────────────────────────────────────────────────── */
-#wg-landing { background: var(--wg-bg) !important; }
+#wg-landing { background: transparent !important; flex: 1 !important; min-height: 100% !important; }
+/* Remove all border/box-shadow artifacts on the landing column and its direct rows */
+#wg-landing, #wg-landing > .row, #wg-landing > .block { border: none !important; box-shadow: none !important; }
+/* Hero's .block wrapper must be a flex item for .wg-hero { flex:1 } to grow it */
+#wg-landing > .block:first-child { flex: 1 !important; display: flex !important; flex-direction: column !important; }
+/* Hero fills the full .block height so dot-grid spans the header zone */
+.wg-hero { flex: 1; }
+/* Eat the bottom padding of .main so footer gap is as small as possible */
+body:not(.wg-light-mode) .main { padding-bottom: 0 !important; }
+/* Collapse Gradio's default gap between HTML components in landing */
+#wg-landing > .svelte-1plpy97, #wg-landing > div { gap: 0 !important; }
+#wg-landing .gap-4 { gap: 0 !important; }
+#wg-landing .block { padding: 0 !important; margin: 0 !important; min-height: 0 !important; }
 
 .wg-hero {
   position: relative;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  /* Dot grid lives in background shorthand — eliminates the ::before stacking context
-     that caused the wordmark to render behind the grid on HF Spaces SSR */
+  /* Dot grid scoped to hero only — footer gap below START TRAINING stays solid dark */
   background:
     radial-gradient(circle, rgba(245,197,24,0.18) 1px, transparent 2px) center/24px 24px,
     var(--wg-bg);
-  padding: 2.5rem 1rem 1rem; text-align: center;
+  padding: 0.75rem 1rem 0.75rem; text-align: center;
 }
 
 /* ● REC indicator — bigger, more visible flicker */
@@ -180,19 +191,24 @@ body.wg-light-mode footer { display: none !important; }
   font-family: 'EB Garamond', Georgia, serif; font-style: italic;
   font-size: 0.78rem; letter-spacing: 0.22em;
   color: var(--wg-yellow); text-transform: uppercase;
-  margin-bottom: 1rem; position: relative; z-index: 1;
+  margin-bottom: 0.25rem; position: relative; z-index: 1;
 }
 
+/* Vertical logo: mascot on top, WIT GYM single line below */
+.wg-logo-row {
+  display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+  position: relative; z-index: 1; margin-bottom: 0.1rem;
+}
 /* Mascot */
-.wg-mascot { margin-bottom: 0.5rem; position: relative; z-index: 1;
+.wg-mascot { position: relative; z-index: 1;
   filter: drop-shadow(0 4px 20px rgba(45,106,79,0.3)); }
 
-/* WIT / GYM wordmark */
-.wg-wordmark { display: flex; flex-direction: column; align-items: center;
-  line-height: 0.88; margin-bottom: 0.9rem; position: relative; z-index: 1; }
+/* WIT GYM on one horizontal line */
+.wg-wordmark { display: flex; flex-direction: row; align-items: baseline;
+  gap: 0.25em; line-height: 1; position: relative; z-index: 1; }
 .wg-wordmark-wit, .wg-wordmark-gym {
   font-family: 'Bebas Neue', Impact, 'Arial Black', sans-serif;
-  font-size: clamp(4.5rem, 18vw, 9rem); letter-spacing: 0.03em;
+  font-size: clamp(3.5rem, 8vw, 5.5rem); letter-spacing: 0.03em;
 }
 /* Hardcoded hex + !important: Gradio 6 SSR on HF Spaces injects theme CSS after APP_CSS,
    causing same-specificity cascade override of var(--wg-white/yellow). */
@@ -206,7 +222,7 @@ body.wg-light-mode footer { display: none !important; }
 }
 
 .wg-start-hint {
-  font-size: 0.72rem; color: var(--wg-muted); margin-top: 0.4rem;
+  font-size: 0.72rem; color: var(--wg-muted); margin: 0.15rem 0 0 !important;
   font-style: italic; text-align: center;
   background: transparent !important;
 }
@@ -250,21 +266,21 @@ body.wg-light-mode footer { display: none !important; }
 #wg-start-btn { justify-content: center !important; background: transparent !important; padding: 0 !important; }
 #wg-start-btn button {
   font-family: 'Bebas Neue', Impact, sans-serif !important;
-  font-size: 1.2rem !important; letter-spacing: 0.22em !important;
+  font-size: 1.1rem !important; letter-spacing: 0.22em !important;
   background: var(--wg-green) !important; color: #fff !important;
   border: none !important; border-radius: 50px !important;
-  padding: 0.75rem 3.25rem !important;
+  padding: 0.55rem 3rem !important;
   transition: background .2s, transform .15s !important;
 }
 #wg-start-btn button:hover { background: #235a40 !important; transform: translateY(-2px) !important; }
 
 /* ── Coaching panel ─────────────────────────────────────────────────────── */
 .wg-coach-panel {
-  width: 100%; padding: 2rem 1rem 2.5rem;
-  background: var(--wg-bg); border-top: 1px solid #2a2a2a;
+  width: 100%; padding: 0.2rem 1rem 0.15rem;
+  background: var(--wg-bg); border-top: none;
 }
 .wg-coach-divider {
-  display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;
+  display: flex; align-items: center; gap: 1rem; margin-bottom: 0.2rem;
 }
 .wg-coach-div-line { flex: 1; height: 1px; background: #3a3a3a; }
 .wg-coach-div-text {
@@ -809,7 +825,7 @@ body.wg-light-mode footer { display: none !important; }
 /* ── Step-cycle loading messages ────────────────────────────────────────── */
 .wg-step-cycle {
   position: relative; display: inline-block;
-  height: 1.3em; min-width: 170px; overflow: hidden;
+  height: 1.4em; min-width: 200px; overflow: hidden; vertical-align: middle;
 }
 .wg-step-cycle span {
   position: absolute; left: 0; top: 0;
@@ -921,6 +937,205 @@ body.wg-light-mode footer { display: none !important; }
   font-size: 1.05rem; color: #3d3429 !important; line-height: 1.6; font-style: italic;
   background: #f5f0e6; border-left: 3px solid #2d6a4f;
   padding: 0.75rem 1rem; border-radius: 0 10px 10px 0;
+}
+
+/* ── Arcade Character Selector ─────────────────────────────────────────────── */
+.wg-arcade {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0.5rem; padding: 0.05rem 0 0; max-width: 700px; margin: 0 auto;
+}
+.wg-arcade-stage {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0.75rem; flex: 1;
+}
+.wg-arcade-arrow {
+  background: rgba(45,106,79,0.12); border: 1.5px solid rgba(45,106,79,0.35);
+  color: #4ade80; font-size: 2.5rem; border-radius: 50%; width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .15s, border-color .15s, transform .1s;
+  flex-shrink: 0; line-height: 1; padding: 0;
+}
+.wg-arcade-arrow:hover {
+  background: rgba(45,106,79,0.28); border-color: #4ade80; transform: scale(1.12);
+}
+.wg-arcade-center {
+  background: var(--wg-surf2); border: 2px solid var(--wg-yellow);
+  border-radius: 14px; padding: 0.35rem 0.8rem 0.35rem;
+  display: flex; flex-direction: column; align-items: center; gap: 0.15rem;
+  cursor: pointer; min-width: 150px; max-width: 175px;
+  box-shadow: 0 0 28px rgba(245,197,24,0.22);
+  transition: box-shadow .2s, border-color .2s;
+  animation: wg-arcade-glow 2.4s ease-in-out infinite;
+}
+.wg-arcade-center:hover {
+  box-shadow: 0 0 45px rgba(245,197,24,0.45);
+  animation: none;
+}
+@keyframes wg-arcade-glow {
+  0%,100% { box-shadow: 0 0 18px rgba(245,197,24,0.18); border-color: var(--wg-yellow); }
+  50%      { box-shadow: 0 0 36px rgba(245,197,24,0.4);  border-color: #fde68a; }
+}
+.wg-arcade-avatar-wrap { position: relative; }
+.wg-arcade-img {
+  width: 76px; height: 76px; border-radius: 10px;
+  background: rgba(255,255,255,0.05); object-fit: cover;
+  transition: opacity .18s;
+}
+.wg-arcade-name {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.15rem; letter-spacing: 0.12em;
+  color: var(--wg-yellow) !important; text-align: center; margin-top: 0.1rem;
+}
+.wg-arcade-role {
+  font-family: 'EB Garamond', serif; font-style: italic;
+  font-size: 0.7rem; color: var(--wg-muted); text-align: center; letter-spacing: 0.1em;
+}
+.wg-arcade-bio {
+  display: none;
+}
+.wg-arcade-select-hint {
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.55rem; letter-spacing: 0.22em;
+  color: #4ade80; margin-top: 0.1rem; opacity: 0.7;
+}
+/* Peek (adjacent) cards */
+.wg-arcade-peek {
+  display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+  opacity: 0.42; filter: blur(1.5px); transform: scale(0.78);
+  transition: opacity .2s, filter .2s, transform .2s;
+  pointer-events: none;
+}
+.wg-arcade-peek img { width: 52px; height: 52px; border-radius: 8px; }
+.wg-arcade-peek-name {
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.65rem;
+  letter-spacing: 0.1em; color: var(--wg-muted); text-align: center;
+}
+/* Dot indicators */
+.wg-arcade-dots {
+  display: flex; justify-content: center; gap: 0.5rem; margin: 0.6rem 0 0.25rem;
+}
+.wg-arcade-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.2); transition: background .2s, transform .2s;
+}
+.wg-arcade-dot--active {
+  background: var(--wg-yellow); transform: scale(1.4);
+}
+/* Slide animation */
+@keyframes wg-arcade-slide-in-right {
+  0%   { opacity: 0; transform: translateX(40px) scale(0.92); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes wg-arcade-slide-in-left {
+  0%   { opacity: 0; transform: translateX(-40px) scale(0.92); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+.wg-arcade-center.wg-arcade--slide-right { animation: wg-arcade-slide-in-right 0.22s ease-out both; }
+.wg-arcade-center.wg-arcade--slide-left  { animation: wg-arcade-slide-in-left 0.22s ease-out both; }
+
+/* ── Practice header coach identity ─────────────────────────────────────── */
+.wg-coach-avatar-wrap { display: flex; align-items: center; flex-shrink: 0; }
+.wg-coach-avatar-img { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; }
+.wg-coach-id { display: flex; flex-direction: column; justify-content: center; }
+
+/* ── Coach reply: avatar + NAME SAYS ────────────────────────────────────── */
+.wg-coach-reply { position: relative; }
+.wg-coach-reply-header--char {
+  display: flex; align-items: center; gap: 0.45rem;
+}
+.wg-coach-reply-avatar {
+  width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
+  background: rgba(255,255,255,0.08);
+}
+#wg-practice .wg-coach-reply-avatar { background: rgba(0,0,0,0.05); }
+
+/* ── Copy button ─────────────────────────────────────────────────────────── */
+.wg-copy-btn {
+  position: absolute; top: 0.55rem; right: 0.6rem;
+  background: transparent; border: none; cursor: pointer;
+  font-size: 0.95rem; color: var(--wg-muted); opacity: 0.5;
+  transition: opacity .15s, color .15s; padding: 0; line-height: 1;
+}
+.wg-copy-btn:hover { opacity: 1; color: var(--wg-yellow); }
+#wg-practice .wg-copy-btn { color: #9e9288; }
+#wg-practice .wg-copy-btn:hover { color: #b45309; }
+
+/* ── Hidden char state textbox ───────────────────────────────────────────── */
+#wg-char-hidden { position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none; }
+
+/* ── Floating roast messages — JS-spawned, multi-directional ─────────────── */
+.wg-roast-chip {
+  position: fixed; z-index: 50; pointer-events: none;
+  font-family: 'EB Garamond', Georgia, serif; font-style: italic;
+  font-size: 0.75rem; color: rgba(245,197,24,0.9);
+  background: rgba(20,20,20,0.78); border: 1px solid rgba(245,197,24,0.28);
+  border-radius: 20px; padding: 0.28rem 0.8rem;
+  opacity: 0; transition: none;
+  animation: wg-roast-float-in 4s ease-out forwards;
+}
+@keyframes wg-roast-float-in {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── Drill buttons — modern pill chips ──────────────────────────────────── */
+.wg-drill-btn button {
+  width: 100%; border-radius: 50px !important; text-align: center !important;
+  font-family: 'Bebas Neue', sans-serif !important;
+  font-size: 0.78rem !important; letter-spacing: 0.14em !important;
+  padding: 0.42rem 0.75rem !important;
+  transition: border-color .15s, box-shadow .15s, transform .1s !important;
+}
+.wg-drill-btn:first-of-type button, .wg-drill-btn button:first-child { /* ⚡ Sharpen */
+  border-color: rgba(245,197,24,0.45) !important; color: #fcd34d !important;
+  background: rgba(245,197,24,0.06) !important;
+}
+.wg-drill-btn:first-of-type button:hover { border-color: #f5c518 !important; box-shadow: 0 0 10px rgba(245,197,24,0.25) !important; }
+.wg-drill-label {
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.2em;
+  font-size: 0.72rem; color: var(--wg-muted);
+  border-bottom: 1px solid var(--wg-border); padding-bottom: 0.3rem;
+}
+#wg-practice .wg-drill-label { color: #9e9288 !important; border-color: #e0d8cc !important; }
+#wg-practice .wg-drill-btn button {
+  background: rgba(45,106,79,0.05) !important;
+  border-color: rgba(45,106,79,0.3) !important;
+  color: #2d6a4f !important;
+}
+#wg-practice .wg-drill-btn button:hover {
+  border-color: #2d6a4f !important;
+  box-shadow: 0 0 8px rgba(45,106,79,0.2) !important;
+  transform: scale(1.02) !important;
+}
+
+/* ── Sci-fi flicker input overlay ────────────────────────────────────────── */
+.wg-flicker-wrap { position: relative; }
+.wg-flicker-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none; padding: 0.55rem 0.75rem;
+  font-family: 'EB Garamond', serif; font-size: 1rem; color: #2a2118;
+  opacity: 0.5; line-height: 1.5; display: flex; align-items: center;
+  z-index: 2;
+}
+.wg-flicker-cursor {
+  display: inline-block; width: 2px; height: 1.1em;
+  background: #2a2118; margin-left: 1px; vertical-align: middle;
+  animation: wg-cursor-blink 0.9s step-end infinite;
+}
+@keyframes wg-cursor-blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+/* Glow border on idle textarea */
+#wg-chat-shell textarea:not(:focus) {
+  box-shadow: 0 0 0 1.5px rgba(45,106,79,0.25) !important;
+  transition: box-shadow .4s;
+}
+#wg-chat-shell textarea:focus {
+  box-shadow: 0 0 0 2px rgba(45,106,79,0.55) !important;
+}
+#wg-practice #wg-chat-shell textarea:not(:focus) {
+  box-shadow: 0 0 0 1.5px rgba(45,106,79,0.18) !important;
+}
+#wg-practice #wg-chat-shell textarea:focus {
+  box-shadow: 0 0 0 2px rgba(45,106,79,0.4) !important;
 }
 """
 
@@ -1103,6 +1318,337 @@ window.wgOpenScene = function(character, show, setup, response, why, avatarUrl, 
     + '</div>';
   o.style.display = 'flex';
 };
+
+/* ── Arcade character selector ─────────────────────────────────────────── */
+(function() {
+  var _chars = null;
+  var _idx = 1; // Start on Michael (index 1), AI is index 0
+
+  function _getChars() {
+    if (_chars) return _chars;
+    var el = document.getElementById('wg-chars-data');
+    if (!el) return null;
+    try { var ta = document.createElement('textarea'); ta.innerHTML = el.textContent || el.innerHTML; _chars = JSON.parse(ta.value); } catch(e) { _chars = []; }
+    return _chars;
+  }
+
+  function _renderDots(n, active) {
+    var el = document.getElementById('wg-arcade-dots');
+    if (!el) return;
+    var html = '';
+    for (var i = 0; i < n; i++) {
+      html += '<div class="wg-arcade-dot' + (i === active ? ' wg-arcade-dot--active' : '') + '"></div>';
+    }
+    el.innerHTML = html;
+  }
+
+  function _renderPeek(side, idx, chars) {
+    var el = document.getElementById('wg-arcade-peek-' + side);
+    if (!el) return;
+    if (!chars || chars.length < 2) { el.innerHTML = ''; return; }
+    var c = chars[idx];
+    if (!c) { el.innerHTML = ''; return; }
+    var fallback = c.fallbackUrl || '';
+    el.innerHTML = '<img src="' + c.avatarUrl + '" alt="' + c.name + '"'
+      + (fallback ? ` onerror="this.onerror=null;this.src=${fallback}"` : '') + '/>'
+      + '<div class="wg-arcade-peek-name">' + c.name + '</div>';
+  }
+
+  window.wgArcadeRender = function(direction) {
+    var chars = _getChars();
+    if (!chars || !chars.length) return;
+    var c = chars[_idx];
+    var center = document.getElementById('wg-arcade-center');
+    var img = document.getElementById('wg-arcade-img');
+    var name = document.getElementById('wg-arcade-name');
+    var role = document.getElementById('wg-arcade-role');
+    var bio = document.getElementById('wg-arcade-bio');
+    if (!center || !img || !name) return;
+
+    if (direction && center) {
+      var cls = direction === 1 ? 'wg-arcade--slide-right' : 'wg-arcade--slide-left';
+      center.classList.remove('wg-arcade--slide-right', 'wg-arcade--slide-left');
+      void center.offsetWidth;
+      center.classList.add(cls);
+    }
+
+    img.src = c.avatarUrl || '';
+    img.alt = c.name;
+    if (c.fallbackUrl) {
+      img.onerror = function() { this.onerror = null; this.src = c.fallbackUrl; };
+    }
+    name.textContent = c.name === 'AI' ? 'LET AI CHOOSE' : c.name.toUpperCase();
+    if (role) role.textContent = c.role;
+    if (bio) bio.textContent = c.bio;
+
+    _renderDots(chars.length, _idx);
+    var leftIdx = (_idx - 1 + chars.length) % chars.length;
+    var rightIdx = (_idx + 1) % chars.length;
+    _renderPeek('left', leftIdx, chars);
+    _renderPeek('right', rightIdx, chars);
+  };
+
+  window.wgArcadeMove = function(dir) {
+    var chars = _getChars();
+    if (!chars || !chars.length) return;
+    _idx = (_idx + dir + chars.length) % chars.length;
+    window.wgArcadeRender(dir);
+    window.wgPlaySelect && window.wgPlaySelect();
+  };
+
+  window.wgArcadeSelect = function() {
+    var chars = _getChars();
+    if (!chars || !chars.length) return;
+    var c = chars[_idx];
+    window._wgSelectedChar = c;
+    // Write char name into Gradio hidden textbox via React/Svelte setter
+    var hidden = document.querySelector('#wg-char-hidden textarea, #wg-char-hidden input[type="text"]');
+    if (hidden) {
+      var setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(hidden), 'value');
+      if (setter && setter.set) setter.set.call(hidden, c.name);
+      hidden.dispatchEvent(new Event('input', {bubbles: true}));
+    }
+    // Play confirm sound then trigger start (start_btn.click reads char_hidden + updates session)
+    window.wgPlayConfirm && window.wgPlayConfirm();
+    setTimeout(function() {
+      var startBtn = document.querySelector('#wg-start-btn button');
+      if (startBtn) startBtn.click();
+    }, 180);
+  };
+
+  // Keyboard navigation
+  document.addEventListener('keydown', function(e) {
+    var arcade = document.getElementById('wg-arcade');
+    if (!arcade || arcade.closest('#wg-practice')) return;
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); window.wgArcadeMove(-1); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); window.wgArcadeMove(1);  }
+    if (e.key === 'Enter' && arcade.offsetParent !== null) { e.preventDefault(); window.wgArcadeSelect(); }
+  });
+
+  // Init on DOM ready
+  function _init() {
+    var chars = _getChars();
+    if (!chars) { setTimeout(_init, 300); return; }
+    window.wgArcadeRender(0);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _init);
+  } else {
+    setTimeout(_init, 100);
+  }
+})();
+
+/* ── Arcade sound effects ─────────────────────────────────────────────────── */
+window.wgPlaySelect = function() {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var now = ctx.currentTime;
+    // Whoosh: sawtooth sweep from 120→320 Hz over 0.18s
+    var sweep = ctx.createOscillator(), sg = ctx.createGain();
+    sweep.connect(sg); sg.connect(ctx.destination);
+    sweep.type = 'sawtooth';
+    sweep.frequency.setValueAtTime(120, now);
+    sweep.frequency.linearRampToValueAtTime(320, now + 0.18);
+    sg.gain.setValueAtTime(0, now);
+    sg.gain.linearRampToValueAtTime(0.04, now + 0.02);
+    sg.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    sweep.start(now); sweep.stop(now + 0.18);
+    // Metallic ping: two detuned sine waves at 1200 + 1207 Hz (beating)
+    [1200, 1207].forEach(function(f, i) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine'; o.frequency.value = f;
+      var t = now + 0.12;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.06, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      o.start(t); o.stop(t + 0.28);
+    });
+  } catch(e) {}
+};
+window.wgPlayConfirm = function() {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [[392, 0, 0.12], [523, 0.14, 0.12], [784, 0.28, 0.22]].forEach(function(p) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'triangle'; o.frequency.value = p[0];
+      var t = ctx.currentTime + p[1];
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.07, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + p[2]);
+      o.start(t); o.stop(t + p[2]);
+    });
+  } catch(e) {}
+};
+
+/* ── Update practice header with selected coach ─────────────────────────── */
+window.wgUpdateCoachHeader = function() {
+  var c = window._wgSelectedChar;
+  if (!c || c.name === 'AI') return; // keep default mug + WITGYM text
+  var mugWrap = document.querySelector('#wg-coach-avatar-wrap svg.wg-mascot-like, #wg-coach-avatar-wrap svg');
+  if (mugWrap) mugWrap.style.display = 'none';
+  var img = document.getElementById('wg-coach-avatar');
+  if (img) {
+    img.src = c.avatarUrl || '';
+    img.alt = c.name;
+    if (c.fallbackUrl) img.onerror = function() { this.onerror=null; this.src=c.fallbackUrl; };
+    img.style.display = 'block';
+  }
+  var nameEl = document.getElementById('wg-coach-name');
+  if (nameEl) nameEl.innerHTML = c.name.toUpperCase() + ' <span style="color:var(--wg-green)">COACH</span>';
+  var roleEl = document.getElementById('wg-coach-role');
+  if (roleEl) roleEl.textContent = c.role + ' · comedy coaching engine';
+};
+
+/* ── Copy button ──────────────────────────────────────────────────────────── */
+window.wgCopy = function(btn) {
+  var body = btn.closest('.wg-coach-reply') && btn.closest('.wg-coach-reply').querySelector('.wg-coach-reply-body');
+  if (!body) return;
+  var text = body.textContent.trim();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      btn.textContent = '✓';
+      setTimeout(function() { btn.textContent = '⎘'; }, 1400);
+    });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    btn.textContent = '✓'; setTimeout(function() { btn.textContent = '⎘'; }, 1400);
+  }
+};
+
+/* ── Sci-fi flickering input placeholder ─────────────────────────────────── */
+/* ── Roast chip spawner — multi-directional ───────────────────────────────── */
+window.wgSpawnRoasts = function() {
+  var QUIPS = [
+    "“That’s what she said.”",
+    "“Identity theft is not a joke, Jim.”",
+    "“Bears. Beats. Battlestar Galactica.”",
+    "“How the turntables…”",
+    "“Would I rather be feared or loved? Easy. Both.”",
+    "“Fool me once, strike one.”",
+    "“I am Beyonc\xe9, always.”",
+    "“The worst thing about prison? The dementors.”",
+  ];
+  // Spawn positions: edge zones (bottom-right, bottom-left, top-right, left-mid, right-mid)
+  var ZONES = [
+    function() { return { bottom: (8 + Math.random()*15) + '%', right: (2 + Math.random()*8) + '%' }; },
+    function() { return { bottom: (8 + Math.random()*15) + '%', left: (2 + Math.random()*8) + '%' }; },
+    function() { return { top: (8 + Math.random()*12) + '%', right: (2 + Math.random()*10) + '%' }; },
+    function() { return { top: (30 + Math.random()*20) + '%', left: (1 + Math.random()*5) + '%' }; },
+    function() { return { top: (30 + Math.random()*20) + '%', right: (1 + Math.random()*5) + '%' }; },
+  ];
+  var qi = Math.floor(Math.random() * QUIPS.length);
+  var pos = ZONES[Math.floor(Math.random() * ZONES.length)]();
+  var el = document.createElement('div');
+  el.className = 'wg-roast-chip';
+  el.textContent = QUIPS[qi];
+  Object.assign(el.style, pos);
+  document.body.appendChild(el);
+  setTimeout(function() { el.parentNode && el.parentNode.removeChild(el); }, 4200);
+};
+
+window.wgInitRoasts = function() {
+  if (window._roastTimer) clearInterval(window._roastTimer);
+  // First chip immediately, then every 5–9s randomly
+  window.wgSpawnRoasts();
+  function scheduleNext() {
+    window._roastTimer = setTimeout(function() {
+      if (document.getElementById('wg-practice') &&
+          window.getComputedStyle(document.getElementById('wg-practice')).display !== 'none') {
+        window.wgSpawnRoasts();
+      }
+      scheduleNext();
+    }, 5000 + Math.random() * 4000);
+  }
+  scheduleNext();
+};
+
+window.wgInitFlicker = function() {
+  var shell = document.getElementById('wg-chat-shell');
+  if (!shell) return;
+  var ta = shell.querySelector('textarea');
+  if (!ta) return;
+
+  var PHRASES = [
+    "I just got promoted and have no idea what I'm doing…",
+    "My coworker keeps stealing my lunch from the fridge…",
+    "I'm pretending to understand cryptocurrency at dinner parties…",
+    "I've been ignoring a voicemail so long it feels like a legal risk…",
+    "I sent a complaint about my manager to my manager…",
+    "Help me respond when someone asks about my job and I don't know what to say…",
+  ];
+
+  var overlay = document.createElement('div');
+  overlay.className = 'wg-flicker-overlay';
+  var textNode = document.createTextNode('');
+  var cursor = document.createElement('span');
+  cursor.className = 'wg-flicker-cursor';
+  overlay.appendChild(textNode);
+  overlay.appendChild(cursor);
+
+  // Insert overlay relative to textarea
+  var wrap = ta.parentNode;
+  if (wrap) {
+    wrap.style.position = 'relative';
+    wrap.insertBefore(overlay, ta.nextSibling);
+  }
+
+  var phraseIdx = 0, charIdx = 0, typing = true, paused = false, timerId = null;
+
+  function step() {
+    if (paused || ta.value.trim()) { overlay.style.display = 'none'; return; }
+    overlay.style.display = '';
+    var phrase = PHRASES[phraseIdx];
+    if (typing) {
+      if (charIdx <= phrase.length) {
+        textNode.nodeValue = phrase.slice(0, charIdx);
+        charIdx++;
+        timerId = setTimeout(step, 38 + Math.random() * 20);
+      } else {
+        typing = false;
+        timerId = setTimeout(step, 1800);
+      }
+    } else {
+      if (charIdx > 0) {
+        charIdx--;
+        textNode.nodeValue = phrase.slice(0, charIdx);
+        timerId = setTimeout(step, 22);
+      } else {
+        phraseIdx = (phraseIdx + 1) % PHRASES.length;
+        typing = true;
+        timerId = setTimeout(step, 300);
+      }
+    }
+  }
+
+  ta.addEventListener('focus', function() {
+    paused = true; overlay.style.display = 'none';
+  });
+  ta.addEventListener('blur', function() {
+    if (!ta.value.trim()) { paused = false; textNode.nodeValue = ''; charIdx = 0; typing = true; step(); }
+  });
+  ta.addEventListener('input', function() {
+    if (ta.value.trim()) { overlay.style.display = 'none'; }
+    else { paused = false; textNode.nodeValue = ''; charIdx = 0; typing = true; step(); }
+  });
+  // Gradio clears textarea programmatically after submit (no 'input' event fires)
+  // Detect this via keydown Enter + delayed poll
+  ta.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      setTimeout(function() {
+        if (!ta.value.trim()) {
+          paused = false; textNode.nodeValue = ''; charIdx = 0; typing = true;
+          overlay.style.display = ''; step();
+        }
+      }, 400);
+    }
+  });
+
+  step();
+};
 """
 _GLOBAL_JS_SCRIPT_TAG = "<script>" + _GLOBAL_JS + "</script>"
 
@@ -1143,7 +1689,7 @@ threading.Thread(target=_bg_warmup, daemon=True).start()
 
 
 def _new_session():
-    return {"conversation": ConversationManager(), "traces": [], "last_wit_response": None}
+    return {"conversation": ConversationManager(), "traces": [], "last_wit_response": None, "selected_char": "AI"}
 
 
 def _on_page_load():
@@ -1159,29 +1705,58 @@ def _on_page_load():
 # ── HTML generators ───────────────────────────────────────────────────────────
 
 def _coaching_panel_html() -> str:
-    cards = []
-    for name, role, bg, avatar_url, bio_title, bio_desc in CHARACTERS:
-        import json
-        onclick = (
-            f"wgOpenBio({json.dumps(name)},{json.dumps(bio_title)},{json.dumps(bio_desc)},{json.dumps(avatar_url)})"
-        )
+    import json as _json
+    # Build JS character data array — includes "AI" as zeroth card
+    mascot_data_uri = char_avatar_svg("AI")  # reuse existing SVG helper with generic key
+    chars_js = [
+        {
+            "name": "AI",
+            "role": "optimized",
+            "avatarUrl": mascot_data_uri,
+            "bio": "Let the engine pick the sharpest voice for your situation.",
+            "title": "AI-Optimized Coach",
+        }
+    ]
+    for name, role, _bg, avatar_url, bio_title, bio_desc in CHARACTERS:
         fallback = char_avatar_svg(name)
-        cards.append(
-            f'<div class="wg-char-card" onclick="{html.escape(onclick)}" title="{html.escape(bio_title)}">'
-            f'<img src="{html.escape(avatar_url)}" alt="{html.escape(name)}" loading="lazy"'
-            f' onerror="this.onerror=null;this.src=\'{fallback}\'"/>'
-            f'<span class="wg-char-name">{html.escape(name)}</span>'
-            f'<span class="wg-char-role">{html.escape(role)}</span>'
-            f'</div>'
-        )
+        chars_js.append({
+            "name": name,
+            "role": role,
+            "avatarUrl": avatar_url,
+            "fallbackUrl": fallback,
+            "bio": bio_desc,
+            "title": bio_title,
+        })
+
+    chars_json = _json.dumps(chars_js)
+
     return (
         f'<div class="wg-coach-panel" id="wg-coaching">'
         f'<div class="wg-coach-divider">'
         f'<span class="wg-coach-div-line"></span>'
-        f'<span class="wg-coach-div-text">— COACHING PANEL —</span>'
+        f'<span class="wg-coach-div-text">— CHOOSE YOUR COACH —</span>'
         f'<span class="wg-coach-div-line"></span>'
         f'</div>'
-        f'<div class="wg-char-grid">{"".join(cards)}</div>'
+        # Arcade carousel scaffold — all state/animation driven by wgInitArcade() JS
+        f'<div class="wg-arcade" id="wg-arcade">'
+        f'<button class="wg-arcade-arrow wg-arcade-arrow--left" onclick="wgArcadeMove(-1)" aria-label="Previous character">&#8249;</button>'
+        f'<div class="wg-arcade-stage">'
+        f'<div class="wg-arcade-peek wg-arcade-peek--left" id="wg-arcade-peek-left"></div>'
+        f'<div class="wg-arcade-center" id="wg-arcade-center" onclick="wgArcadeSelect()">'
+        f'<div class="wg-arcade-avatar-wrap"><img id="wg-arcade-img" class="wg-arcade-img" src="" alt=""/></div>'
+        f'<div id="wg-arcade-name" class="wg-arcade-name"></div>'
+        f'<div id="wg-arcade-role" class="wg-arcade-role"></div>'
+        f'<div id="wg-arcade-bio" class="wg-arcade-bio"></div>'
+        f'<div class="wg-arcade-select-hint">PRESS ENTER OR CLICK TO SELECT</div>'
+        f'</div>'
+        f'<div class="wg-arcade-peek wg-arcade-peek--right" id="wg-arcade-peek-right"></div>'
+        f'</div>'
+        f'<button class="wg-arcade-arrow wg-arcade-arrow--right" onclick="wgArcadeMove(1)" aria-label="Next character">&#8250;</button>'
+        f'</div>'
+        # Dot indicators
+        f'<div class="wg-arcade-dots" id="wg-arcade-dots"></div>'
+        # Embed character data for JS
+        f'<script id="wg-chars-data" type="application/json">{html.escape(chars_json)}</script>'
         f'</div>'
     )
 
@@ -1206,11 +1781,12 @@ def _landing_html() -> str:
     return (
         f'<div class="wg-hero">'
         f'<div class="wg-rec"><span class="wg-rec-dot"></span>REC</div>'
-        f'<div class="wg-kicker">Paste awkward &mdash; get one line that lands</div>'
+        f'<div class="wg-logo-row">'
         f'{_MASCOT}'
         f'<div class="wg-wordmark">'
         f'<div class="wg-wordmark-wit">WIT</div>'
         f'<div class="wg-wordmark-gym">GYM</div>'
+        f'</div>'
         f'</div>'
         f'</div>'
     )
@@ -1230,12 +1806,22 @@ _MUG_SVG = (
 )
 
 
+_ROAST_FLOAT_HTML = '<div id="wg-roast-host" aria-hidden="true"></div>'
+
+
 def _practice_header_html() -> str:
+    # IDs wg-coach-avatar, wg-coach-name, wg-coach-role are injected by wgUpdateCoachHeader() JS
+    # on start_btn click — no Gradio re-render needed.
     return (
         '<div class="wg-practice-bar">'
+        '<div id="wg-coach-avatar-wrap" class="wg-coach-avatar-wrap">'
         + _MUG_SVG +
-        '<div class="wg-practice-logo">WIT<span>GYM</span></div>'
-        '<div class="wg-practice-sub">Comedy Coaching Engine</div>'
+        '<img id="wg-coach-avatar" class="wg-coach-avatar-img" src="" alt="" style="display:none"/>'
+        '</div>'
+        '<div class="wg-coach-id">'
+        '<div id="wg-coach-name" class="wg-practice-logo">WIT<span>GYM</span></div>'
+        '<div id="wg-coach-role" class="wg-practice-sub">Comedy Coaching Engine</div>'
+        '</div>'
         '<span id="wg-rep-count" class="wg-rep-count" aria-live="polite"></span>'
         '</div>'
     )
@@ -1262,19 +1848,25 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
     if not isinstance(session, dict):
         session = _new_session()
     user_input = (user_input or "").strip()
+    selected_char = session.get("selected_char", "AI")
     if not user_input:
-        yield format_transcript_html(session["traces"], show_debug=show_debug), gr.update(value="", interactive=True), session
+        yield format_transcript_html(session["traces"], show_debug=show_debug, selected_char=selected_char), gr.update(value="", interactive=True), session
         return
 
-    logger.info(f"Practice: {user_input[:80]!r}")
+    logger.info(f"Practice: {user_input[:80]!r} | char={selected_char}")
     yield (
-        format_transcript_html(session["traces"], append_html=thinking_turn_html(user_input), show_debug=show_debug),
+        format_transcript_html(session["traces"], append_html=thinking_turn_html(user_input), show_debug=show_debug, selected_char=selected_char),
         gr.update(value="", interactive=False),
         session,
     )
 
     progress(0.05, desc="That's what she said — analysing…")
-    engine = WitGymEngine(resources=_get_shared(), conversation=session["conversation"], last_wit_response=session.get("last_wit_response"))
+    engine = WitGymEngine(
+        resources=_get_shared(),
+        conversation=session["conversation"],
+        last_wit_response=session.get("last_wit_response"),
+        character=selected_char,
+    )
     stream_state = StreamingTurnState(user_input=user_input)
     try:
         for event in engine.respond_stream(user_input):
@@ -1298,13 +1890,13 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
                 session["traces"] = session["traces"][-5:]
                 session["last_wit_response"] = engine._last_wit_response
                 yield (
-                    format_transcript_html(session["traces"], show_debug=show_debug),
+                    format_transcript_html(session["traces"], show_debug=show_debug, selected_char=selected_char),
                     gr.update(value="", interactive=True),
                     session,
                 )
                 return
             yield (
-                format_transcript_with_streaming(session["traces"], stream_state, show_debug=show_debug),
+                format_transcript_with_streaming(session["traces"], stream_state, show_debug=show_debug, selected_char=selected_char),
                 gr.update(value="", interactive=False),
                 session,
             )
@@ -1315,7 +1907,7 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
             f'{html.escape(user_input)}</div>'
             f'<div style="color:#dc2626;padding:.5rem 0">Error: {html.escape(str(e))}</div></div>'
         )
-        yield format_transcript_html(session["traces"], append_html=err, show_debug=show_debug), gr.update(value="", interactive=True), session
+        yield format_transcript_html(session["traces"], append_html=err, show_debug=show_debug, selected_char=selected_char), gr.update(value="", interactive=True), session
         return
 
 
@@ -1344,6 +1936,16 @@ def _theme():
     )
 
 
+def _set_char_in_session(char_name: str, session):
+    """Called when arcade SELECT fires — stores chosen character in session state."""
+    if not isinstance(session, dict):
+        session = _new_session()
+    session = dict(session)
+    session["selected_char"] = char_name or "AI"
+    logger.info(f"Coach selected: {session['selected_char']}")
+    return session
+
+
 def build_ui():
     with gr.Blocks(title="WitGym", css=APP_CSS, theme=_theme(), head=_GLOBAL_JS_SCRIPT_TAG) as demo:
         # Modal scaffold at top DOM level — position:fixed, never hidden by Column visibility toggling.
@@ -1356,15 +1958,18 @@ def build_ui():
         # ── Landing screen ────────────────────────────────────────
         with gr.Column(visible=True, elem_id="wg-landing") as landing_col:
             gr.HTML(_landing_html())
-            gr.HTML(_SCROLL_CUE_HTML)
+            gr.HTML(_coaching_panel_html())
             with gr.Row(elem_id="wg-start-btn"):
                 start_btn = gr.Button("START TRAINING →", variant="primary", size="lg")
-            gr.HTML('<p class="wg-start-hint">Paste any real-life awkward situation to begin</p>')
-            gr.HTML(_coaching_panel_html())
+
+        # Hidden Textbox: JS writes selected char name here before arcade confirm fires
+        char_hidden = gr.Textbox(visible=True, elem_id="wg-char-hidden", value="AI")
 
         # ── Practice screen ───────────────────────────────────────
         with gr.Column(visible=False, elem_id="wg-practice") as practice_col:
             gr.HTML(_practice_header_html())
+            # Floating roast messages (fixed bottom-right)
+            gr.HTML(_ROAST_FLOAT_HTML)
 
             with gr.Column(elem_id="witgym-main"):
                 with gr.Row(equal_height=True):
@@ -1383,6 +1988,7 @@ def build_ui():
                                 placeholder="Describe a situation… (Enter to send)",
                                 lines=1,
                                 max_lines=3,
+                                elem_id="wg-user-input",
                             )
                             with gr.Row():
                                 submit_btn = gr.Button(
@@ -1400,21 +2006,33 @@ def build_ui():
                                 elem_classes=["wg-starter-btn"],
                             )
                             sb.click(fn=fill_starter, inputs=[gr.State(text)], outputs=user_input, queue=False)
-                        gr.HTML('<div class="wg-sidebar-label" style="margin-top:.85rem">Coach drills</div>')
+                        gr.HTML('<div class="wg-sidebar-label wg-drill-label" style="margin-top:.85rem">Coach Drills</div>')
                         drill_btns = []
+                        _DRILL_ICONS = {"sharpen it": "⚡", "different angle": "↗", "explain the joke": "🔍"}
                         for label, drill_text in DRILL_ACTIONS:
+                            icon = _DRILL_ICONS.get(label, "↻")
                             db = gr.Button(
-                                f"↻ {label}", size="sm", variant="secondary",
-                                elem_classes=["wg-starter-btn"],
+                                f"{icon} {label}", size="sm", variant="secondary",
+                                elem_classes=["wg-drill-btn"],
                             )
                             drill_btns.append((db, drill_text))
 
         # ── Event wiring ──────────────────────────────────────────
+
         start_btn.click(
-            fn=lambda: (gr.update(visible=False), gr.update(visible=True)),
-            outputs=[landing_col, practice_col],
+            fn=lambda char, s: (gr.update(visible=False), gr.update(visible=True), {**s, "selected_char": char or "AI"}),
+            inputs=[char_hidden, session_state],
+            outputs=[landing_col, practice_col, session_state],
             queue=False,
-            js="() => { document.body.classList.add('wg-light-mode'); wgPlayBell && wgPlayBell(); return []; }",
+            js=(
+                "() => {"
+                "  document.body.classList.add('wg-light-mode');"
+                "  wgPlayBell && wgPlayBell();"
+                "  setTimeout(function(){ wgUpdateCoachHeader && wgUpdateCoachHeader(); }, 80);"
+                "  setTimeout(function(){ wgInitFlicker && wgInitFlicker(); wgInitRoasts && wgInitRoasts(); }, 150);"
+                "  return [];"
+                "}"
+            ),
         )
         submit_btn.click(
             fn=practice,

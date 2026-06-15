@@ -107,9 +107,42 @@ def char_avatar_url(name: str) -> str:
     return f"{_BASE}?seed={seed}&{params}&backgroundColor=transparent"
 
 
+_ROBOT_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">'
+    '<circle cx="40" cy="40" r="40" fill="#1a2d4a"/>'
+    # antenna
+    '<line x1="40" y1="10" x2="40" y2="19" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round"/>'
+    '<circle cx="40" cy="8" r="4" fill="#4ade80"/>'
+    # head box
+    '<rect x="18" y="19" width="44" height="30" rx="6" fill="#2d6a4f"/>'
+    '<rect x="19" y="20" width="42" height="28" rx="5" fill="none" stroke="#4ade80" stroke-width="1.2" stroke-opacity="0.5"/>'
+    # eyes — two glowing circles
+    '<circle cx="29" cy="33" r="6" fill="#0a1628"/>'
+    '<circle cx="51" cy="33" r="6" fill="#0a1628"/>'
+    '<circle cx="29" cy="33" r="3.5" fill="#4ade80"/>'
+    '<circle cx="51" cy="33" r="3.5" fill="#4ade80"/>'
+    '<circle cx="30.5" cy="31.5" r="1.2" fill="#fff" opacity="0.7"/>'
+    '<circle cx="52.5" cy="31.5" r="1.2" fill="#fff" opacity="0.7"/>'
+    # mouth — LED bar
+    '<rect x="26" y="42" width="28" height="4" rx="2" fill="#0a1628"/>'
+    '<rect x="28" y="43" width="6" height="2" rx="1" fill="#4ade80"/>'
+    '<rect x="37" y="43" width="6" height="2" rx="1" fill="#4ade80"/>'
+    '<rect x="46" y="43" width="6" height="2" rx="1" fill="#4ade80" opacity="0.5"/>'
+    # body
+    '<rect x="26" y="50" width="28" height="18" rx="4" fill="#2d3d55"/>'
+    '<circle cx="35" cy="59" r="4" fill="#1a2d4a" stroke="#4ade80" stroke-width="1"/>'
+    '<circle cx="45" cy="59" r="4" fill="#1a2d4a" stroke="#4ade80" stroke-width="1"/>'
+    '<circle cx="35" cy="59" r="2" fill="#4ade80" opacity="0.7"/>'
+    '<circle cx="45" cy="59" r="2" fill="#f59e0b" opacity="0.8"/>'
+    '</svg>'
+)
+
+
 def char_avatar_svg(name: str) -> str:
-    """Fallback inline SVG data URI (colored circle + initial + emoji)."""
+    """Fallback inline SVG data URI. AI gets a cute robot; others get themed circle + emoji."""
     key = name.lower().split()[0]
+    if key == "ai":
+        return "data:image/svg+xml;base64," + base64.b64encode(_ROBOT_SVG.encode()).decode()
     bg, emoji = _FALLBACK_STYLES.get(key, ("#2d6a4f", "🎭"))
     initial = name[0].upper()
     svg = (

@@ -88,15 +88,44 @@ def _mode_badge_html(route: str) -> str:
     return _MODE_BADGES.get(route, _MODE_BADGES["quick_wit"])
 
 
-def _compact_reply_html(route: str, selected: str, *, coaching_hint: str = "") -> str:
+def _coach_header_html(selected_char: str) -> str:
+    """Render 'JIM SAYS:' header with tiny avatar when a character is selected."""
+    if not selected_char or selected_char == "AI":
+        return '<div class="wg-coach-reply-header">Your humor coach</div>'
+    av = _avatar_url(selected_char)
+    name = selected_char.upper()
+    return (
+        f'<div class="wg-coach-reply-header wg-coach-reply-header--char">'
+        f'<img src="{_esc(av)}" alt="{_esc(selected_char)}" class="wg-coach-reply-avatar" '
+        f'onerror="this.style.display=\'none\'"/>'
+        f'{_esc(name)} SAYS:'
+        f'</div>'
+    )
+
+
+_COPY_BTN = (
+    '<button class="wg-copy-btn" onclick="wgCopy(this)" title="Copy to clipboard" '
+    'aria-label="Copy line to clipboard">⎘</button>'
+)
+
+
+def _compact_reply_html(route: str, selected: str, *, coaching_hint: str = "", selected_char: str = "AI") -> str:
     hint = f'<div class="wg-dim-italic" style="margin-top:.35rem;font-size:.85rem">{_esc(coaching_hint)}</div>' if coaching_hint else ""
     return (
         f'{_mode_badge_html(route)}'
         '<div class="wg-coach-reply wg-coach-reply--compact">'
-        '<div class="wg-coach-reply-header">Your humor coach</div>'
+        f'{_copy_btn_html()}'
+        f'{_coach_header_html(selected_char)}'
         f'<div class="wg-coach-reply-body">{_esc(selected)}</div>'
         f'{hint}'
         '</div>'
+    )
+
+
+def _copy_btn_html() -> str:
+    return (
+        '<button class="wg-copy-btn" onclick="wgCopy(this)" title="Copy to clipboard" '
+        'aria-label="Copy line to clipboard">⎘</button>'
     )
 
 
@@ -124,9 +153,14 @@ def thinking_turn_html(user_input: str) -> str:
         f'<div class="wg-user"><span class="wg-label">You</span> {_esc(user_input)}</div>'
         f'<div class="wg-thinking">{_THINKING_ICON}'
         '<span class="wg-step-cycle">'
-        '<span>reading the room…</span>'
-        '<span>finding precedent…</span>'
-        '<span>drafting candidates…</span>'
+        '<span>That\'s what she said…</span>'
+        '<span>Consulting the beet farm…</span>'
+        '<span>Michael\'s meeting ran over…</span>'
+        '<span>Bears. Beats. Processing…</span>'
+        '<span>Checking Dunder Mifflin playbook…</span>'
+        '<span>Identity theft is not a joke…</span>'
+        '<span>Channeling Scranton energy…</span>'
+        '<span>How the turntables…</span>'
         '</span></div>'
         '</div>'
     )
@@ -348,9 +382,14 @@ def format_streaming_turn_html(state: StreamingTurnState, show_debug: bool = Tru
         parts += [
             f'<div class="wg-thinking">{_THINKING_ICON}'
             '<span class="wg-step-cycle">'
-            '<span>reading the room…</span>'
-            '<span>finding precedent…</span>'
-            '<span>drafting candidates…</span>'
+            '<span>That\'s what she said…</span>'
+            '<span>Consulting the beet farm…</span>'
+            '<span>Michael\'s meeting ran over…</span>'
+            '<span>Bears. Beats. Processing…</span>'
+            '<span>Checking Dunder Mifflin playbook…</span>'
+            '<span>Identity theft is not a joke…</span>'
+            '<span>Channeling Scranton energy…</span>'
+            '<span>How the turntables…</span>'
             '</span></div></div>',
         ]
         return "".join(parts)
@@ -412,9 +451,10 @@ def format_transcript_with_streaming(
     stream_state: Optional[StreamingTurnState],
     show_debug: bool = True,
     max_turns: int = 5,
+    selected_char: str = "AI",
 ) -> str:
     if not traces and stream_state is None:
-        return format_transcript_html([], show_debug=show_debug)
+        return format_transcript_html([], show_debug=show_debug, selected_char=selected_char)
     recent = traces[-max_turns:]
     body = "".join(
         format_trace_html(
@@ -422,6 +462,7 @@ def format_transcript_with_streaming(
             user_input,
             show_debug=show_debug,
             is_last=False,
+            selected_char=selected_char,
         )
         for user_input, r in recent
     )
@@ -441,7 +482,7 @@ def _twist_meter_html(twist_potential: int) -> str:
     )
 
 
-def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool = True, is_last: bool = False) -> str:
+def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool = True, is_last: bool = False, selected_char: str = "AI") -> str:
     parts = [
         '<div class="wg-turn">',
         f'<div class="wg-user"><span class="wg-label">You</span> {_esc(user_input)}</div>',
@@ -449,7 +490,7 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
 
     if result.route in ("banter", "smalltalk"):
         parts += [
-            _compact_reply_html("banter", result.selected),
+            _compact_reply_html("banter", result.selected, selected_char=selected_char),
             '</div>',
         ]
         return "".join(parts)
@@ -460,6 +501,7 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
                 "coaching",
                 result.selected,
                 coaching_hint="coaching mode — waiting for your answer",
+                selected_char=selected_char,
             ),
             '</div>',
         ]
@@ -488,10 +530,18 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
     beckon_cls = " wg-debug-toggle--new" if is_last else ""
 
     # ── Hero reply FIRST (above fold) ──────────────────────────────────────
+    coach_hdr = (
+        f'<div class="wg-coach-reply-header wg-coach-reply-header--char">'
+        + (f'<img src="{_esc(_avatar_url(selected_char))}" alt="{_esc(selected_char)}" class="wg-coach-reply-avatar" onerror="this.style.display=\'none\'"/>'
+           if selected_char and selected_char != "AI" else "")
+        + (f'{_esc(selected_char.upper())} SAYS:' if selected_char and selected_char != "AI" else f'Your humor coach{persona_label}')
+        + f'{another_take_btn}</div>'
+    )
     parts += [
         _mode_badge_html(result.route),
         f'<div class="wg-coach-reply{new_cls}" data-alts="{alts_json}" data-alt-idx="0">',
-        f'<div class="wg-coach-reply-header">Your humor coach{persona_label}{another_take_btn}</div>',
+        f'{_copy_btn_html()}',
+        coach_hdr,
         f'<div class="wg-coach-reply-body">{_esc(result.selected)}</div>',
         '</div>',
     ]
@@ -534,6 +584,7 @@ def format_transcript_html(
     max_turns: int = 5,
     append_html: str = "",
     show_debug: bool = True,
+    selected_char: str = "AI",
 ) -> str:
     if not traces and not append_html:
         body = (
@@ -552,6 +603,7 @@ def format_transcript_html(
                 user_input,
                 show_debug=show_debug,
                 is_last=(i == len(recent) - 1),
+                selected_char=selected_char,
             )
             for i, (user_input, r) in enumerate(recent)
         ) + append_html
