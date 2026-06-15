@@ -84,7 +84,7 @@ TRANSCRIPT_MIN_HEIGHT = 440
 TRANSCRIPT_MAX_HEIGHT = 580
 
 # ── Mascot SVG ────────────────────────────────────────────────────────────────
-_MASCOT = """<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="wg-mascot" width="80" height="80" aria-hidden="true">
+_MASCOT = """<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" class="wg-mascot" width="96" height="96" aria-hidden="true">
   <circle cx="50" cy="50" r="44" fill="#f0ebe0" stroke="#d4cfc0" stroke-width="1.5"/>
   <rect x="7"  y="34" width="35" height="22" rx="6" fill="#1a3d2b"/>
   <rect x="58" y="34" width="35" height="22" rx="6" fill="#1a3d2b"/>
@@ -142,19 +142,11 @@ body.wg-light-mode footer { display: none !important; }
 }
 
 /* ── Landing / Hero ─────────────────────────────────────────────────────── */
-#wg-landing { background: transparent !important; flex: 1 !important; min-height: 100% !important; }
-/* Remove all border/box-shadow artifacts on the landing column and its direct rows */
-#wg-landing, #wg-landing > .row, #wg-landing > .block { border: none !important; box-shadow: none !important; }
-/* Hero's .block wrapper must be a flex item for .wg-hero { flex:1 } to grow it */
-#wg-landing > .block:first-child { flex: 1 !important; display: flex !important; flex-direction: column !important; }
-/* Hero fills the full .block height so dot-grid spans the header zone */
-.wg-hero { flex: 1; }
-/* Eat the bottom padding of .main so footer gap is as small as possible */
-body:not(.wg-light-mode) .main { padding-bottom: 0 !important; }
+#wg-landing { background: transparent !important; border: none !important; }
 /* Collapse Gradio's default gap between HTML components in landing */
 #wg-landing > .svelte-1plpy97, #wg-landing > div { gap: 0 !important; }
 #wg-landing .gap-4 { gap: 0 !important; }
-#wg-landing .block { padding: 0 !important; margin: 0 !important; min-height: 0 !important; }
+#wg-landing .block { padding: 0 !important; margin: 0 !important; min-height: 0 !important; box-shadow: none !important; border: none !important; }
 
 .wg-hero {
   position: relative;
@@ -194,21 +186,23 @@ body:not(.wg-light-mode) .main { padding-bottom: 0 !important; }
   margin-bottom: 0.25rem; position: relative; z-index: 1;
 }
 
-/* Vertical logo: mascot on top, WIT GYM single line below */
+/* Vertical logo: mascot → WIT → GYM stacked, all centered */
 .wg-logo-row {
-  display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
-  position: relative; z-index: 1; margin-bottom: 0.1rem;
+  display: flex; flex-direction: column; align-items: center; gap: 0;
+  position: relative; z-index: 1;
 }
 /* Mascot */
-.wg-mascot { position: relative; z-index: 1;
-  filter: drop-shadow(0 4px 20px rgba(45,106,79,0.3)); }
+.wg-mascot { position: relative; z-index: 1; margin-bottom: 0.25rem;
+  filter: drop-shadow(0 4px 24px rgba(45,106,79,0.4)); }
 
-/* WIT GYM on one horizontal line */
-.wg-wordmark { display: flex; flex-direction: row; align-items: baseline;
-  gap: 0.25em; line-height: 1; position: relative; z-index: 1; }
+/* WIT and GYM stacked vertically, each on its own line */
+.wg-wordmark { display: flex; flex-direction: column; align-items: center;
+  line-height: 0.9; position: relative; z-index: 1; }
+/* Huge font — fills ~260px of the 720px viewport so content organically fills height,
+   eliminating the empty footer gap without fighting Svelte's height binding. */
 .wg-wordmark-wit, .wg-wordmark-gym {
   font-family: 'Bebas Neue', Impact, 'Arial Black', sans-serif;
-  font-size: clamp(3.5rem, 8vw, 5.5rem); letter-spacing: 0.03em;
+  font-size: clamp(5rem, 12vw, 8.5rem); letter-spacing: 0.03em; display: block;
 }
 /* Hardcoded hex + !important: Gradio 6 SSR on HF Spaces injects theme CSS after APP_CSS,
    causing same-specificity cascade override of var(--wg-white/yellow). */
@@ -400,6 +394,8 @@ body:not(.wg-light-mode) .main { padding-bottom: 0 !important; }
 }
 #wg-practice textarea::placeholder,
 #wg-practice input::placeholder { color: #9e9288 !important; }
+/* Hide native placeholder in chat shell — flicker overlay replaces it */
+#wg-chat-shell textarea::placeholder { color: transparent !important; }
 #wg-practice button.secondary,
 #wg-practice .gradio-container button.secondary {
   background: #f5f2eb !important; border-color: #e0d8cc !important; color: #3d3429 !important;
@@ -949,14 +945,27 @@ body:not(.wg-light-mode) .main { padding-bottom: 0 !important; }
   gap: 0.75rem; flex: 1;
 }
 .wg-arcade-arrow {
-  background: rgba(45,106,79,0.12); border: 1.5px solid rgba(45,106,79,0.35);
-  color: #4ade80; font-size: 2.5rem; border-radius: 50%; width: 48px; height: 48px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: background .15s, border-color .15s, transform .1s;
-  flex-shrink: 0; line-height: 1; padding: 0;
+  background: rgba(10,20,14,0.72) !important;
+  border: 1.5px solid #4ade80 !important;
+  color: #4ade80 !important;
+  font-size: 2rem !important;
+  border-radius: 50% !important;
+  width: 48px !important; height: 48px !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  cursor: pointer !important;
+  transition: background .15s, box-shadow .15s, transform .1s !important;
+  flex-shrink: 0 !important; line-height: 1 !important; padding: 0 !important;
+  box-shadow: 0 0 12px rgba(74,222,128,0.35), inset 0 0 8px rgba(74,222,128,0.08) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  outline: none !important;
 }
 .wg-arcade-arrow:hover {
-  background: rgba(45,106,79,0.28); border-color: #4ade80; transform: scale(1.12);
+  background: rgba(74,222,128,0.15) !important;
+  border-color: #86efac !important;
+  box-shadow: 0 0 22px rgba(74,222,128,0.6), inset 0 0 12px rgba(74,222,128,0.15) !important;
+  transform: scale(1.12) !important;
+  color: #86efac !important;
 }
 .wg-arcade-center {
   background: var(--wg-surf2); border: 2px solid var(--wg-yellow);
@@ -1762,7 +1771,8 @@ def _coaching_panel_html() -> str:
 
 
 _SCROLL_CUE_HTML = (
-    '<div class="wg-scroll-cue" role="button" tabindex="0" aria-label="Scroll to begin training">'
+    '<div class="wg-scroll-cue" role="button" tabindex="0" aria-label="Scroll to begin training"'
+    ' onclick="document.getElementById(\'wg-coaching\').scrollIntoView({behavior:\'smooth\'})">'
     '<div class="wg-scroll-circle">'
     '<svg class="wg-scroll-arrow-svg" viewBox="0 0 24 28" width="20" height="24" '
     'fill="none" xmlns="http://www.w3.org/2000/svg">'
@@ -1781,6 +1791,7 @@ def _landing_html() -> str:
     return (
         f'<div class="wg-hero">'
         f'<div class="wg-rec"><span class="wg-rec-dot"></span>REC</div>'
+        f'<div class="wg-kicker">Paste awkward &mdash; get one line that lands</div>'
         f'<div class="wg-logo-row">'
         f'{_MASCOT}'
         f'<div class="wg-wordmark">'
