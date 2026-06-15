@@ -104,6 +104,7 @@ sequenceDiagram
 - **Off‑Brand UI** (`achievement:offbrand`): custom Gradio UI + streaming trace disclosure.
 
 ### Submission links
+- **Source code**: [GitHub — https://github.com/akshay-babbar/witgym](https://github.com/akshay-babbar/witgym) (built with OpenAI Codex — see co-authored commits)
 - **Demo video**: [YouTube — https://youtu.be/enb5ua65RZM](https://youtu.be/enb5ua65RZM)
 - **Social post**: [LinkedIn — https://www.linkedin.com/posts/akshay4b_happy-to-share-a-project-ive-been-building-ugcPost-7472401282822111232-Q_nt/](https://www.linkedin.com/posts/akshay4b_happy-to-share-a-project-ive-been-building-ugcPost-7472401282822111232-Q_nt/)
 - **Validate README**: [Build Small validator](https://build-small-hackathon-field-guide.hf.space/submit)
