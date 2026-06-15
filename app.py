@@ -1060,22 +1060,40 @@ body.wg-light-mode footer { display: none !important; }
 /* ── Reply action buttons ────────────────────────────────────────────────── */
 .wg-reply-actions {
   position: absolute; top: 0.5rem; right: 0.6rem;
-  display: inline-flex; align-items: center; gap: 0.5rem;
+  display: inline-flex; align-items: center; gap: 0.5rem; z-index: 3;
 }
 .wg-action-btn {
-  background: transparent; border: none; cursor: pointer;
-  font-size: 0.95rem; color: var(--wg-muted); opacity: 0.58;
-  transition: opacity .15s, color .15s, transform .15s;
-  padding: 0; line-height: 1;
+  -webkit-appearance: none !important; appearance: none !important;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.15rem; height: 2.15rem; min-width: 2.15rem;
+  background: rgba(245,240,232,0.88) !important;
+  border: 1px solid rgba(45,106,79,0.12) !important;
+  border-radius: 0.72rem !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  color: rgba(94, 84, 72, 0.88); opacity: 0.92;
+  transition: opacity .15s, color .15s, transform .15s, border-color .15s, background-color .15s;
+  padding: 0 !important; line-height: 1; font: inherit;
+  outline: none !important;
 }
-.wg-action-btn:hover { opacity: 1; color: var(--wg-yellow); transform: translateY(-1px); }
-#wg-practice .wg-action-btn { color: #9e9288; }
-#wg-practice .wg-action-btn:hover { color: #b45309; }
+.wg-action-btn:hover {
+  opacity: 1; color: #9c5c19; transform: translateY(-1px);
+  border-color: rgba(180,83,9,0.22) !important;
+  background: rgba(255, 250, 241, 0.98) !important;
+}
+#wg-practice .wg-action-btn { color: rgba(94, 84, 72, 0.88); background: rgba(245,240,232,0.9) !important; }
+#wg-practice .wg-action-btn:hover { color: #b45309; background: rgba(255,250,241,0.98) !important; }
+.wg-action-btn:focus,
+.wg-action-btn:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(45,106,79,0.14) !important;
+}
 .wg-speak-btn.wg-speaking { opacity: 1; color: var(--wg-green); }
 #wg-practice .wg-speak-btn.wg-speaking { color: #2d6a4f; }
+.wg-action-icon { width: 0.86rem; height: 0.86rem; display: block; flex-shrink: 0; pointer-events: none; }
 .wg-coach-reply.wg-speaking .wg-coach-reply-avatar,
 .wg-coach-reply.wg-speaking #wg-coach-avatar,
-.wg-coach-reply.wg-speaking svg {
+.wg-coach-reply.wg-speaking .wg-coach-reply-header svg {
   animation: wg-coach-speaking 0.9s ease-in-out infinite;
   transform-origin: center;
 }
@@ -1535,14 +1553,15 @@ window.wgCopy = function(btn) {
   var text = body.textContent.trim();
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(function() {
-      btn.textContent = '✓';
-      setTimeout(function() { btn.textContent = '⎘'; }, 1400);
+      window.wgSetActionIcon(btn, 'copied');
+      setTimeout(function() { window.wgSetActionIcon(btn, 'copy'); }, 1400);
     });
   } else {
     var ta = document.createElement('textarea');
     ta.value = text; document.body.appendChild(ta);
     ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-    btn.textContent = '✓'; setTimeout(function() { btn.textContent = '⎘'; }, 1400);
+    window.wgSetActionIcon(btn, 'copied');
+    setTimeout(function() { window.wgSetActionIcon(btn, 'copy'); }, 1400);
   }
 };
 
@@ -1559,7 +1578,7 @@ window.wgStopSpeaking = function() {
   }
   if (window._wgSpeakingBtn) {
     window._wgSpeakingBtn.classList.remove('wg-speaking');
-    window._wgSpeakingBtn.textContent = '▶';
+    window.wgSetActionIcon(window._wgSpeakingBtn, 'play');
   }
   if (window._wgSpeakingReply) {
     window._wgSpeakingReply.classList.remove('wg-speaking');
@@ -1568,36 +1587,76 @@ window.wgStopSpeaking = function() {
   window._wgSpeakingReply = null;
 };
 
+window.wgSetActionIcon = function(btn, kind) {
+  if (!btn) return;
+  if (kind === 'copy') {
+    btn.innerHTML =
+      '<svg viewBox="0 0 20 20" class="wg-action-icon" aria-hidden="true">' +
+      '<rect x="7" y="4" width="8" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"></rect>' +
+      '<path d="M5 7H4.5A1.5 1.5 0 0 0 3 8.5v7A1.5 1.5 0 0 0 4.5 17h5A1.5 1.5 0 0 0 11 15.5V15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>' +
+      '</svg>';
+    return;
+  }
+  if (kind === 'copied') {
+    btn.innerHTML =
+      '<svg viewBox="0 0 20 20" class="wg-action-icon" aria-hidden="true">' +
+      '<path d="M4.5 10.5 8 14l7.5-8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>' +
+      '</svg>';
+    return;
+  }
+  if (kind === 'stop') {
+    btn.innerHTML =
+      '<svg viewBox="0 0 20 20" class="wg-action-icon" aria-hidden="true">' +
+      '<rect x="5.2" y="5.2" width="9.6" height="9.6" rx="1.8" fill="currentColor"></rect>' +
+      '</svg>';
+    return;
+  }
+  btn.innerHTML =
+    '<svg viewBox="0 0 20 20" class="wg-action-icon" aria-hidden="true">' +
+    '<path d="M6 4.8v10.4c0 .9 1 1.45 1.77.96l8-5.2a1.15 1.15 0 0 0 0-1.92l-8-5.2A1.15 1.15 0 0 0 6 4.8Z" fill="currentColor"></path>' +
+    '</svg>';
+};
+
 window.wgVoiceProfile = function(charName) {
   var key = (charName || 'AI').toLowerCase();
   var profiles = {
-    ai:      { rate: 1.02, pitch: 1.0, keywords: ['google', 'samantha', 'aria', 'female', 'zira'] },
-    jim:     { rate: 1.03, pitch: 0.96, keywords: ['daniel', 'alex', 'tom', 'male'] },
-    pam:     { rate: 0.98, pitch: 1.08, keywords: ['samantha', 'victoria', 'karen', 'female'] },
-    michael: { rate: 1.08, pitch: 1.05, keywords: ['fred', 'junior', 'male'] },
-    dwight:  { rate: 0.92, pitch: 0.82, keywords: ['alex', 'david', 'male'] },
-    kevin:   { rate: 0.86, pitch: 0.84, keywords: ['jorge', 'male'] },
-    andy:    { rate: 1.12, pitch: 1.12, keywords: ['fred', 'male'] },
-    stanley: { rate: 0.83, pitch: 0.75, keywords: ['ralph', 'male'] },
-    angela:  { rate: 0.94, pitch: 1.14, keywords: ['samantha', 'female'] },
-    ryan:    { rate: 1.01, pitch: 0.9, keywords: ['alex', 'male'] },
-    kelly:   { rate: 1.14, pitch: 1.2, keywords: ['victoria', 'female'] }
+    ai:      { rate: 1.02, pitch: 1.0, keywords: ['google', 'samantha', 'aria', 'female', 'zira'], fallbackKeywords: ['google', 'samantha', 'aria', 'zira'], gender: 'neutral' },
+    jim:     { rate: 1.03, pitch: 0.96, keywords: ['daniel', 'alex', 'tom', 'male'], fallbackKeywords: ['daniel', 'alex', 'tom', 'fred', 'jorge', 'ralph'], gender: 'male' },
+    pam:     { rate: 0.98, pitch: 1.08, keywords: ['samantha', 'victoria', 'karen', 'female'], fallbackKeywords: ['samantha', 'victoria', 'karen', 'zira', 'aria'], gender: 'female' },
+    michael: { rate: 1.08, pitch: 1.05, keywords: ['fred', 'junior', 'male'], fallbackKeywords: ['fred', 'alex', 'daniel', 'jorge'], gender: 'male' },
+    dwight:  { rate: 0.92, pitch: 0.82, keywords: ['alex', 'david', 'male'], fallbackKeywords: ['alex', 'david', 'fred', 'ralph'], gender: 'male' },
+    kevin:   { rate: 0.86, pitch: 0.84, keywords: ['jorge', 'male'], fallbackKeywords: ['jorge', 'ralph', 'fred', 'alex'], gender: 'male' },
+    andy:    { rate: 1.12, pitch: 1.12, keywords: ['fred', 'male'], fallbackKeywords: ['fred', 'daniel', 'alex', 'tom'], gender: 'male' },
+    stanley: { rate: 0.83, pitch: 0.75, keywords: ['ralph', 'male'], fallbackKeywords: ['ralph', 'jorge', 'alex', 'fred'], gender: 'male' },
+    angela:  { rate: 0.94, pitch: 1.14, keywords: ['samantha', 'female'], fallbackKeywords: ['samantha', 'victoria', 'karen', 'zira'], gender: 'female' },
+    ryan:    { rate: 1.01, pitch: 0.9, keywords: ['alex', 'male'], fallbackKeywords: ['alex', 'daniel', 'tom', 'fred'], gender: 'male' },
+    kelly:   { rate: 1.14, pitch: 1.2, keywords: ['victoria', 'female'], fallbackKeywords: ['victoria', 'karen', 'samantha', 'zira'], gender: 'female' }
   };
   return profiles[key] || profiles.ai;
 };
 
-window.wgPickVoice = function(keywords) {
+window.wgPickVoice = function(profile, reply) {
   if (!window.speechSynthesis || !window.speechSynthesis.getVoices) return null;
   var voices = window.speechSynthesis.getVoices() || [];
   if (!voices.length) return null;
-  var lowered = (keywords || []).map(function(k) { return k.toLowerCase(); });
-  for (var i = 0; i < lowered.length; i++) {
+  var preferred = (profile.keywords || []).map(function(k) { return k.toLowerCase(); });
+  for (var i = 0; i < preferred.length; i++) {
     var match = voices.find(function(voice) {
       var hay = (voice.name + ' ' + (voice.lang || '')).toLowerCase();
-      return hay.indexOf(lowered[i]) !== -1;
+      return hay.indexOf(preferred[i]) !== -1;
     });
     if (match) return match;
   }
+  var fallback = (profile.fallbackKeywords || []).map(function(k) { return k.toLowerCase(); });
+  for (var j = 0; j < fallback.length; j++) {
+    var fallbackMatch = voices.find(function(voice) {
+      var hay = (voice.name + ' ' + (voice.lang || '')).toLowerCase();
+      return hay.indexOf(fallback[j]) !== -1;
+    });
+    if (fallbackMatch) return fallbackMatch;
+  }
+  var gender = (reply && reply.dataset && reply.dataset.voiceGender) || profile.gender || 'neutral';
+  if (gender !== 'neutral') return null;
   return voices.find(function(voice) { return /^en(-|_)/i.test(voice.lang || ''); }) || voices[0];
 };
 
@@ -1622,7 +1681,7 @@ window.wgSpeak = function(btn) {
         window._wgSpeakingReply = reply;
         window._wgAudioPlayer = audio;
         btn.classList.add('wg-speaking');
-        btn.textContent = '■';
+        window.wgSetActionIcon(btn, 'stop');
         reply.classList.add('wg-speaking');
       };
       audio.onended = window.wgStopSpeaking;
@@ -1641,17 +1700,22 @@ window.wgSpeak = function(btn) {
     } catch (e) {}
   }
 
+  if (reply.dataset.allowBrowserVoice !== 'true') return;
+
   if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
   var profile = window.wgVoiceProfile(reply.dataset.char || 'AI');
   var utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = profile.rate;
   utterance.pitch = profile.pitch;
-  utterance.voice = window.wgPickVoice(profile.keywords);
+  utterance.voice = window.wgPickVoice(profile, reply);
+  if (!utterance.voice && profile.gender !== 'neutral') {
+    return;
+  }
   utterance.onstart = function() {
     window._wgSpeakingBtn = btn;
     window._wgSpeakingReply = reply;
     btn.classList.add('wg-speaking');
-    btn.textContent = '■';
+    window.wgSetActionIcon(btn, 'stop');
     reply.classList.add('wg-speaking');
   };
   utterance.onend = window.wgStopSpeaking;
@@ -2039,7 +2103,6 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
             elif event.phase == "final_start":
                 progress(0.92, desc="Polishing — almost there…")
             elif event.phase == "done" and event.response:
-                event.response.tts_audio_url = synthesize_line(event.response.selected, selected_char)
                 session["traces"].append((user_input, event.response))
                 session["traces"] = session["traces"][-5:]
                 session["last_wit_response"] = engine._last_wit_response
@@ -2048,6 +2111,15 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
                     gr.update(value="", interactive=True),
                     session,
                 )
+                audio_url = synthesize_line(event.response.selected, selected_char)
+                if audio_url:
+                    event.response.tts_audio_url = audio_url
+                    session["traces"][-1] = (user_input, event.response)
+                    yield (
+                        format_transcript_html(session["traces"], show_debug=show_debug, selected_char=selected_char),
+                        gr.update(value="", interactive=True),
+                        session,
+                    )
                 return
             yield (
                 format_transcript_with_streaming(session["traces"], stream_state, show_debug=show_debug, selected_char=selected_char),

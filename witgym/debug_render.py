@@ -1,6 +1,7 @@
 """Format WitGymResponse traces for Gradio — styled HTML transcript."""
 import html
 import json
+import re
 from dataclasses import dataclass, field
 from typing import List, Tuple, Any, Optional
 from witgym.schemas import WitGymResponse, PipelineEvent, ComedyMetadata, CandidateResponse, TranscriptScene
@@ -103,13 +104,32 @@ def _coach_header_html(selected_char: str) -> str:
     )
 
 
+def _voice_gender(selected_char: str) -> str:
+    if selected_char in {"Pam", "Angela", "Kelly"}:
+        return "female"
+    if selected_char in {"Michael", "Dwight", "Jim", "Kevin", "Andy", "Stanley", "Ryan"}:
+        return "male"
+    return "neutral"
+
+
+def _allow_browser_voice(selected_char: str) -> str:
+    return "true" if _voice_gender(selected_char) == "neutral" else "false"
+
+
 def _reply_actions_html() -> str:
     return (
         '<div class="wg-reply-actions">'
         '<button class="wg-action-btn wg-copy-btn" onclick="wgCopy(this)" title="Copy to clipboard" '
-        'aria-label="Copy line to clipboard">⎘</button>'
+        'aria-label="Copy line to clipboard" data-icon="copy">'
+        '<svg viewBox="0 0 20 20" class="wg-action-icon" aria-hidden="true">'
+        '<rect x="7" y="4" width="8" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/>'
+        '<path d="M5 7H4.5A1.5 1.5 0 0 0 3 8.5v7A1.5 1.5 0 0 0 4.5 17h5A1.5 1.5 0 0 0 11 15.5V15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
+        '</svg></button>'
         '<button class="wg-action-btn wg-speak-btn" onclick="wgSpeak(this)" title="Let your coach speak" '
-        'aria-label="Let your coach speak">▶</button>'
+        'aria-label="Let your coach speak" data-icon="play">'
+        '<svg viewBox="0 0 20 20" class="wg-action-icon" aria-hidden="true">'
+        '<path d="M6 4.8v10.4c0 .9 1 1.45 1.77.96l8-5.2a1.15 1.15 0 0 0 0-1.92l-8-5.2A1.15 1.15 0 0 0 6 4.8Z" fill="currentColor"/>'
+        '</svg></button>'
         '</div>'
     )
 
@@ -118,7 +138,10 @@ def _compact_reply_html(route: str, selected: str, *, coaching_hint: str = "", s
     hint = f'<div class="wg-dim-italic" style="margin-top:.35rem;font-size:.85rem">{_esc(coaching_hint)}</div>' if coaching_hint else ""
     return (
         f'{_mode_badge_html(route)}'
-        f'<div class="wg-coach-reply wg-coach-reply--compact" data-char="{_esc(selected_char or "AI")}">'
+        f'<div class="wg-coach-reply wg-coach-reply--compact" '
+        f'data-char="{_esc(selected_char or "AI")}" '
+        f'data-voice-gender="{_voice_gender(selected_char or "AI")}" '
+        f'data-allow-browser-voice="{_allow_browser_voice(selected_char or "AI")}">'
         f'{_reply_actions_html()}'
         f'{_coach_header_html(selected_char)}'
         f'<div class="wg-coach-reply-body">{_esc(selected)}</div>'
@@ -143,22 +166,35 @@ _THINKING_ICON = (
     '</svg>'
 )
 
+_STABLE_LOADING_LINE = "Checking Dunder Mifflin playbook…"
+
+
+def _sanitize_streaming_reply_text(text: str) -> str:
+    raw = (text or "").strip()
+    if not raw:
+        return ""
+    json_match = re.search(r'"compressed_line"\s*:\s*"((?:[^"\\]|\\.)*)"', raw)
+    if json_match:
+        try:
+            return json.loads(f'"{json_match.group(1)}"').strip()
+        except Exception:
+            return json_match.group(1).strip()
+    if raw.startswith("{"):
+        try:
+            obj = json.loads(raw)
+            value = next(iter(obj.values())) if obj else ""
+            return str(value).strip()
+        except Exception:
+            return ""
+    return raw
+
 
 def thinking_turn_html(user_input: str) -> str:
     return (
         '<div class="wg-turn wg-turn--thinking">'
         f'<div class="wg-user"><span class="wg-label">You</span> {_esc(user_input)}</div>'
         f'<div class="wg-thinking">{_THINKING_ICON}'
-        '<span class="wg-step-cycle">'
-        '<span>That\'s what she said…</span>'
-        '<span>Consulting the beet farm…</span>'
-        '<span>Michael\'s meeting ran over…</span>'
-        '<span>Bears. Beats. Processing…</span>'
-        '<span>Checking Dunder Mifflin playbook…</span>'
-        '<span>Identity theft is not a joke…</span>'
-        '<span>Channeling Scranton energy…</span>'
-        '<span>How the turntables…</span>'
-        '</span></div>'
+        f'<span>{_esc(_STABLE_LOADING_LINE)}</span></div>'
         '</div>'
     )
 
@@ -377,34 +413,28 @@ def format_streaming_turn_html(state: StreamingTurnState, show_debug: bool = Tru
 
     if state.metadata is None:
         parts += [
-            f'<div class="wg-thinking">{_THINKING_ICON}'
-            '<span class="wg-step-cycle">'
-            '<span>That\'s what she said…</span>'
-            '<span>Consulting the beet farm…</span>'
-            '<span>Michael\'s meeting ran over…</span>'
-            '<span>Bears. Beats. Processing…</span>'
-            '<span>Checking Dunder Mifflin playbook…</span>'
-            '<span>Identity theft is not a joke…</span>'
-            '<span>Channeling Scranton energy…</span>'
-            '<span>How the turntables…</span>'
-            '</span></div></div>',
+            f'<div class="wg-thinking">{_THINKING_ICON}<span>{_esc(_STABLE_LOADING_LINE)}</span></div></div>',
         ]
         return "".join(parts)
 
     collapsed_cls = "" if show_debug else " wg-collapsed"
     chevron = "▼" if show_debug else "▶"
-    display_text = state.final_text or state.selected
+    display_text = _sanitize_streaming_reply_text(state.final_text or state.selected)
     persona_label = (
         f' · <em class="wg-persona-label">{_esc(state.winning_persona)}</em>'
         if state.winning_persona else ""
     )
 
-    # Guard: don't display raw JSON tokens that leak during compress_winner_stream
-    is_raw_json = bool(display_text and display_text.lstrip().startswith("{"))
+    # Guard: don't display raw JSON tokens or mixed text+JSON tails from compression streaming
+    raw_display_text = (state.final_text or state.selected or "").strip()
+    has_json_tail = '"compressed_line"' in raw_display_text or (
+        "{" in raw_display_text and not raw_display_text.lstrip().startswith("{")
+    )
+    is_raw_json = bool(raw_display_text and raw_display_text.lstrip().startswith("{"))
 
     # ── Hero reply FIRST (above fold) ──────────────────────────────────────
     parts.append(_mode_badge_html(state.route))
-    if display_text and not is_raw_json:
+    if display_text and not is_raw_json and not has_json_tail:
         polish = ' · <span class="wg-dim-italic">polishing…</span>' if state.streaming_final else ""
         parts += [
             '<div class="wg-coach-reply wg-coach-reply--new">',
@@ -412,7 +442,7 @@ def format_streaming_turn_html(state: StreamingTurnState, show_debug: bool = Tru
             f'<div class="wg-coach-reply-body">{_esc(display_text)}</div>',
             '</div>',
         ]
-    elif state.streaming_final or is_raw_json:
+    elif state.streaming_final or is_raw_json or has_json_tail:
         # Compression pass running — show stable placeholder
         parts += [
             '<div class="wg-coach-reply wg-coach-reply--new">',
@@ -539,6 +569,8 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
         (
             f'<div class="wg-coach-reply{new_cls}" data-alts="{alts_json}" data-alt-idx="0" '
             f'data-char="{_esc(selected_char or "AI")}" '
+            f'data-voice-gender="{_voice_gender(selected_char or "AI")}" '
+            f'data-allow-browser-voice="{_allow_browser_voice(selected_char or "AI")}" '
             f'data-audio="{_esc(result.tts_audio_url or "")}">'
         ),
         f'{_reply_actions_html()}',
