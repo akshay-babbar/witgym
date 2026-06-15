@@ -25,7 +25,6 @@ from witgym.debug_render import (
 )
 from witgym import config
 from witgym.avatars import char_avatar_url, char_avatar_svg
-from witgym.tts import synthesize_line
 
 INDEX_PATH = os.getenv("WITGYM_INDEX_PATH", config.INDEX_PATH)
 _FAVICON = Path(__file__).parent / "assets" / "favicon.png"
@@ -1165,20 +1164,7 @@ body.wg-light-mode footer { display: none !important; }
   outline: none !important;
   box-shadow: 0 0 0 2px rgba(45,106,79,0.14) !important;
 }
-.wg-speak-btn.wg-speaking { opacity: 1; color: var(--wg-green); }
-#wg-practice .wg-speak-btn.wg-speaking { color: #2d6a4f; }
 .wg-action-icon { width: 0.86rem; height: 0.86rem; display: block; flex-shrink: 0; pointer-events: none; }
-.wg-coach-reply.wg-speaking .wg-coach-reply-avatar,
-.wg-coach-reply.wg-speaking #wg-coach-avatar,
-.wg-coach-reply.wg-speaking .wg-coach-reply-header svg {
-  animation: wg-coach-speaking 0.9s ease-in-out infinite;
-  transform-origin: center;
-}
-@keyframes wg-coach-speaking {
-  0%, 100% { transform: translateY(0) scale(1); }
-  35% { transform: translateY(-1px) scale(1.04); }
-  65% { transform: translateY(1px) scale(0.99); }
-}
 
 /* ── Dedicated trace launcher + modal post-mortem ───────────────────────── */
 .wg-trace-launch-wrap {
@@ -1820,42 +1806,6 @@ window.wgCopy = function(btn) {
   }
 };
 
-window.wgShowToast = function(msg) {
-  var el = document.getElementById('wg-tts-toast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'wg-tts-toast';
-    el.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:.6rem 1.2rem;border-radius:.5rem;font-size:.9rem;z-index:9999;pointer-events:none;opacity:0;transition:opacity .2s';
-    document.body.appendChild(el);
-  }
-  el.textContent = msg;
-  el.style.opacity = '1';
-  clearTimeout(window._wgToastTimer);
-  window._wgToastTimer = setTimeout(function() { el.style.opacity = '0'; }, 2500);
-};
-
-window.wgStopSpeaking = function() {
-  if (window._wgAudioPlayer) {
-    try {
-      window._wgAudioPlayer.pause();
-      window._wgAudioPlayer.currentTime = 0;
-    } catch (e) {}
-    window._wgAudioPlayer = null;
-  }
-  if (window.speechSynthesis) {
-    window.speechSynthesis.cancel();
-  }
-  if (window._wgSpeakingBtn) {
-    window._wgSpeakingBtn.classList.remove('wg-speaking');
-    window.wgSetActionIcon(window._wgSpeakingBtn, 'play');
-  }
-  if (window._wgSpeakingReply) {
-    window._wgSpeakingReply.classList.remove('wg-speaking');
-  }
-  window._wgSpeakingBtn = null;
-  window._wgSpeakingReply = null;
-};
-
 window.wgSetActionIcon = function(btn, kind) {
   if (!btn) return;
   if (kind === 'copy') {
@@ -1873,116 +1823,7 @@ window.wgSetActionIcon = function(btn, kind) {
       '</svg>';
     return;
   }
-  if (kind === 'stop') {
-    btn.innerHTML =
-      '<svg viewBox="0 0 20 20" class="wg-action-icon" aria-hidden="true">' +
-      '<rect x="5.2" y="5.2" width="9.6" height="9.6" rx="1.8" fill="currentColor"></rect>' +
-      '</svg>';
-    return;
-  }
-  btn.innerHTML =
-    '<svg viewBox="0 0 20 20" class="wg-action-icon" aria-hidden="true">' +
-    '<path d="M6 4.8v10.4c0 .9 1 1.45 1.77.96l8-5.2a1.15 1.15 0 0 0 0-1.92l-8-5.2A1.15 1.15 0 0 0 6 4.8Z" fill="currentColor"></path>' +
-    '</svg>';
 };
-
-window.wgVoiceProfile = function(charName) {
-  var key = (charName || 'AI').toLowerCase();
-  var profiles = {
-    ai:      { rate: 1.02, pitch: 1.0, keywords: ['google', 'samantha', 'aria', 'female', 'zira'], fallbackKeywords: ['google', 'samantha', 'aria', 'zira'], gender: 'neutral' },
-    jim:     { rate: 1.03, pitch: 0.96, keywords: ['daniel', 'alex', 'tom', 'male'], fallbackKeywords: ['daniel', 'alex', 'tom', 'fred', 'jorge', 'ralph'], gender: 'male' },
-    pam:     { rate: 0.98, pitch: 1.08, keywords: ['samantha', 'victoria', 'karen', 'female'], fallbackKeywords: ['samantha', 'victoria', 'karen', 'zira', 'aria'], gender: 'female' },
-    michael: { rate: 1.08, pitch: 1.05, keywords: ['fred', 'junior', 'male'], fallbackKeywords: ['fred', 'alex', 'daniel', 'jorge'], gender: 'male' },
-    dwight:  { rate: 0.92, pitch: 0.82, keywords: ['alex', 'david', 'male'], fallbackKeywords: ['alex', 'david', 'fred', 'ralph'], gender: 'male' },
-    kevin:   { rate: 0.86, pitch: 0.84, keywords: ['jorge', 'male'], fallbackKeywords: ['jorge', 'ralph', 'fred', 'alex'], gender: 'male' },
-    andy:    { rate: 1.12, pitch: 1.12, keywords: ['fred', 'male'], fallbackKeywords: ['fred', 'daniel', 'alex', 'tom'], gender: 'male' },
-    stanley: { rate: 0.83, pitch: 0.75, keywords: ['ralph', 'male'], fallbackKeywords: ['ralph', 'jorge', 'alex', 'fred'], gender: 'male' },
-    angela:  { rate: 0.94, pitch: 1.14, keywords: ['samantha', 'female'], fallbackKeywords: ['samantha', 'victoria', 'karen', 'zira'], gender: 'female' },
-    ryan:    { rate: 1.01, pitch: 0.9, keywords: ['alex', 'male'], fallbackKeywords: ['alex', 'daniel', 'tom', 'fred'], gender: 'male' },
-    kelly:   { rate: 1.14, pitch: 1.2, keywords: ['victoria', 'female'], fallbackKeywords: ['victoria', 'karen', 'samantha', 'zira'], gender: 'female' }
-  };
-  return profiles[key] || profiles.ai;
-};
-
-window.wgPickVoice = function(profile, reply) {
-  if (!window.speechSynthesis || !window.speechSynthesis.getVoices) return null;
-  var voices = window.speechSynthesis.getVoices() || [];
-  if (!voices.length) return null;
-  var preferred = (profile.keywords || []).map(function(k) { return k.toLowerCase(); });
-  for (var i = 0; i < preferred.length; i++) {
-    var match = voices.find(function(voice) {
-      var hay = (voice.name + ' ' + (voice.lang || '')).toLowerCase();
-      return hay.indexOf(preferred[i]) !== -1;
-    });
-    if (match) return match;
-  }
-  var fallback = (profile.fallbackKeywords || []).map(function(k) { return k.toLowerCase(); });
-  for (var j = 0; j < fallback.length; j++) {
-    var fallbackMatch = voices.find(function(voice) {
-      var hay = (voice.name + ' ' + (voice.lang || '')).toLowerCase();
-      return hay.indexOf(fallback[j]) !== -1;
-    });
-    if (fallbackMatch) return fallbackMatch;
-  }
-  return voices.find(function(voice) { return /^en(-|_)/i.test(voice.lang || ''); }) || voices[0];
-};
-
-window.wgSpeak = function(btn) {
-  var reply = btn.closest('.wg-coach-reply');
-  var body = reply && reply.querySelector('.wg-coach-reply-body');
-  if (!reply || !body) return;
-  var text = body.textContent.trim();
-  if (!text) return;
-  if (window._wgSpeakingBtn === btn) {
-    window.wgStopSpeaking();
-    return;
-  }
-  window.wgStopSpeaking();
-
-  var audioSrc = reply.dataset.audio || '';
-  if (audioSrc) {
-    try {
-      var audio = new Audio(audioSrc);
-      audio.onplay = function() {
-        window._wgSpeakingBtn = btn;
-        window._wgSpeakingReply = reply;
-        window._wgAudioPlayer = audio;
-        btn.classList.add('wg-speaking');
-        window.wgSetActionIcon(btn, 'stop');
-        reply.classList.add('wg-speaking');
-      };
-      audio.onended = window.wgStopSpeaking;
-      audio.onerror = function() {
-        window._wgAudioPlayer = null;
-        window.wgStopSpeaking();
-      };
-      var playPromise = audio.play();
-      if (playPromise && playPromise.catch) {
-        playPromise.catch(function() {
-          window._wgAudioPlayer = null;
-          window.wgStopSpeaking();
-        });
-      }
-      return;
-    } catch (e) {}
-  }
-
-  if (reply.dataset.ttsLoading === 'true') {
-    window.wgShowToast('Voice is loading… try again in a moment.');
-    return;
-  }
-};
-
-try {
-  if (window.speechSynthesis && window.speechSynthesis.getVoices) {
-    window.speechSynthesis.getVoices();
-    if ('onvoiceschanged' in window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = function() {
-        window.speechSynthesis.getVoices();
-      };
-    }
-  }
-} catch (e) {}
 
 /* ── Sci-fi flickering input placeholder ─────────────────────────────────── */
 /* ── Roast chip spawner — multi-directional ───────────────────────────────── */
@@ -2374,14 +2215,6 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
                     gr.update(value="", interactive=True),
                     session,
                 )
-                audio_url = synthesize_line(event.response.selected, selected_char)
-                if audio_url:
-                    event.response.tts_audio_url = audio_url
-                    session["traces"][-1] = (user_input, event.response)
-                    final_html = format_transcript_html(session["traces"], show_debug=show_debug, selected_char=selected_char)
-                    # Strip audio from session so gr.State doesn't carry ~500KB per turn
-                    event.response.tts_audio_url = None
-                    yield (final_html, gr.update(value="", interactive=True), session)
                 return
             yield (
                 format_transcript_with_streaming(session["traces"], stream_state, show_debug=show_debug, selected_char=selected_char),

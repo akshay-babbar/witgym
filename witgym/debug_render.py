@@ -111,22 +111,6 @@ def _coach_header_html(selected_char: str) -> str:
     )
 
 
-def _voice_gender(selected_char: str) -> str:
-    if selected_char in {"Pam", "Angela", "Kelly"}:
-        return "female"
-    if selected_char in {"Michael", "Dwight", "Jim", "Kevin", "Andy", "Stanley", "Ryan"}:
-        return "male"
-    return "neutral"
-
-
-def _tts_attrs(tts_audio_url: str) -> str:
-    """Return HTML attribute string for TTS state."""
-    from witgym.tts import TTS_LOADING
-    if tts_audio_url == TTS_LOADING:
-        return 'data-tts-loading="true" data-audio=""'
-    return f'data-audio="{_esc(tts_audio_url or "")}"'
-
-
 def _reply_actions_html() -> str:
     return (
         '<div class="wg-reply-actions">'
@@ -135,11 +119,6 @@ def _reply_actions_html() -> str:
         '<svg viewBox="0 0 20 20" class="wg-action-icon" aria-hidden="true">'
         '<rect x="7" y="4" width="8" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/>'
         '<path d="M5 7H4.5A1.5 1.5 0 0 0 3 8.5v7A1.5 1.5 0 0 0 4.5 17h5A1.5 1.5 0 0 0 11 15.5V15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
-        '</svg></button>'
-        '<button class="wg-action-btn wg-speak-btn" onclick="wgSpeak(this)" title="Let your coach speak" '
-        'aria-label="Let your coach speak" data-icon="play">'
-        '<svg viewBox="0 0 20 20" class="wg-action-icon" aria-hidden="true">'
-        '<path d="M6 4.8v10.4c0 .9 1 1.45 1.77.96l8-5.2a1.15 1.15 0 0 0 0-1.92l-8-5.2A1.15 1.15 0 0 0 6 4.8Z" fill="currentColor"/>'
         '</svg></button>'
         '</div>'
     )
@@ -200,14 +179,12 @@ def _trace_payload_from_stream(state: "StreamingTurnState", selected_text: str) 
     }
 
 
-def _compact_reply_html(route: str, selected: str, *, coaching_hint: str = "", selected_char: str = "AI", tts_audio_url: str = "") -> str:
+def _compact_reply_html(route: str, selected: str, *, coaching_hint: str = "", selected_char: str = "AI") -> str:
     hint = f'<div class="wg-dim-italic" style="margin-top:.35rem;font-size:.85rem">{_esc(coaching_hint)}</div>' if coaching_hint else ""
     return (
         f'{_mode_badge_html(route)}'
         f'<div class="wg-coach-reply wg-coach-reply--compact" '
-        f'data-char="{_esc(selected_char or "AI")}" '
-        f'data-voice-gender="{_voice_gender(selected_char or "AI")}" '
-        f'{_tts_attrs(tts_audio_url or "")}>'
+        f'data-char="{_esc(selected_char or "AI")}">'
         f'{_reply_actions_html()}'
         f'{_coach_header_html(selected_char)}'
         f'<div class="wg-coach-reply-body">{_esc(selected)}</div>'
@@ -557,7 +534,7 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
 
     if result.route in ("banter", "smalltalk"):
         parts += [
-            _compact_reply_html("banter", result.selected, selected_char=selected_char, tts_audio_url=result.tts_audio_url or ""),
+            _compact_reply_html("banter", result.selected, selected_char=selected_char),
             '</div>',
         ]
         return "".join(parts)
@@ -569,7 +546,6 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
                 result.selected,
                 coaching_hint="coaching mode — waiting for your answer",
                 selected_char=selected_char,
-                tts_audio_url=result.tts_audio_url or "",
             ),
             '</div>',
         ]
@@ -612,9 +588,7 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
         _mode_badge_html(result.route),
         (
             f'<div class="wg-coach-reply{new_cls}" data-alts="{alts_json}" data-alt-idx="0" '
-            f'data-char="{_esc(selected_char or "AI")}" '
-            f'data-voice-gender="{_voice_gender(selected_char or "AI")}" '
-            f'{_tts_attrs(result.tts_audio_url or "")}>'
+            f'data-char="{_esc(selected_char or "AI")}">'
         ),
         f'{_reply_actions_html()}',
         coach_hdr,
