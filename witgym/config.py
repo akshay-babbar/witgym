@@ -107,9 +107,9 @@ HF_API_MAX_RETRIES = int(os.getenv("HF_API_MAX_RETRIES", "3"))
 TTS_ENABLED = os.getenv("TTS_ENABLED", "1").strip().lower() not in {"0", "false", "no"}
 TTS_MODEL_ID = os.getenv("TTS_MODEL_ID", "hexgrad/Kokoro-82M")
 TTS_AUDIO_FORMAT = os.getenv("TTS_AUDIO_FORMAT", "audio/flac")
-TTS_API_TIMEOUT = float(os.getenv("TTS_API_TIMEOUT", "10"))
+TTS_API_TIMEOUT = float(os.getenv("TTS_API_TIMEOUT", "6"))
 TTS_INFERENCE_PROVIDERS = [
     p.strip()
-    for p in os.getenv("TTS_INFERENCE_PROVIDERS", "fal-ai,auto").split(",")
+    for p in os.getenv("TTS_INFERENCE_PROVIDERS", "auto").split(",")
     if p.strip()
 ]

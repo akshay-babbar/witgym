@@ -1,12 +1,13 @@
-"""Minimal post-pipeline TTS helper using HF Inference Providers."""
+"""Local Kokoro-82M TTS — runs on-device, no API calls, no provider dependency."""
 
 from __future__ import annotations
 
 import base64
-from functools import lru_cache
+import io
+from threading import Lock
 
-from huggingface_hub import InferenceClient
-from huggingface_hub.errors import HfHubHTTPError, InferenceTimeoutError
+import numpy as np
+import soundfile as sf
 from loguru import logger
 
 from witgym import config
@@ -37,37 +38,50 @@ def _voice_for_character(character: str) -> str:
     return _FEMALE_VOICES["AI"]
 
 
-@lru_cache(maxsize=4)
-def _client(provider: str) -> InferenceClient:
-    return InferenceClient(
-        provider=provider,
-        api_key=config.HF_TOKEN or None,
-        timeout=config.TTS_API_TIMEOUT,
-    )
+_pipeline = None
+_pipeline_lock = Lock()
+
+
+def _get_pipeline():
+    global _pipeline
+    if _pipeline is not None:
+        return _pipeline
+    with _pipeline_lock:
+        if _pipeline is not None:
+            return _pipeline
+        try:
+            from kokoro import KPipeline
+            logger.info("Loading Kokoro-82M pipeline (first call)…")
+            _pipeline = KPipeline(lang_code="a")
+            logger.info("Kokoro-82M ready.")
+        except Exception as exc:
+            logger.error(f"Failed to load Kokoro pipeline: {exc}")
+            _pipeline = None
+    return _pipeline
 
 
 def synthesize_line(text: str, character: str = "AI") -> str | None:
-    """Return a data URL for generated audio, or None on failure."""
+    """Return a FLAC data URL for the text, or None on failure."""
     if not config.TTS_ENABLED:
         return None
-
     text = (text or "").strip()
     if not text:
         return None
 
-    voice = _voice_for_character(character or "AI")
-    for provider in config.TTS_INFERENCE_PROVIDERS:
-        try:
-            audio = _client(provider).text_to_speech(
-                text=text,
-                model=config.TTS_MODEL_ID,
-                extra_body={"voice": voice},
-            )
-            b64 = base64.b64encode(audio).decode("ascii")
-            return f"data:{config.TTS_AUDIO_FORMAT};base64,{b64}"
-        except (InferenceTimeoutError, HfHubHTTPError) as exc:
-            logger.warning(f"TTS failed via provider={provider} voice={voice}: {exc}")
-        except Exception as exc:  # pragma: no cover - safety fallback for provider drift
-            logger.warning(f"Unexpected TTS failure via provider={provider} voice={voice}: {exc}")
+    pipeline = _get_pipeline()
+    if pipeline is None:
+        return None
 
-    return None
+    voice = _voice_for_character(character or "AI")
+    try:
+        chunks = [audio for _, _, audio in pipeline(text, voice=voice)]
+        if not chunks:
+            return None
+        audio = np.concatenate(chunks)
+        buf = io.BytesIO()
+        sf.write(buf, audio, 24000, format="FLAC")
+        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        return f"data:audio/flac;base64,{b64}"
+    except Exception as exc:
+        logger.warning(f"Kokoro TTS failed voice={voice}: {exc}")
+        return None

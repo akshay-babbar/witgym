@@ -1114,35 +1114,40 @@ body.wg-light-mode footer { display: none !important; }
   100% { opacity: 0; }
 }
 
-/* ── Drill buttons — modern pill chips ──────────────────────────────────── */
-.wg-drill-btn button {
-  width: 100%; border-radius: 50px !important; text-align: center !important;
-  font-family: 'Bebas Neue', sans-serif !important;
-  font-size: 0.78rem !important; letter-spacing: 0.14em !important;
-  padding: 0.42rem 0.75rem !important;
-  transition: border-color .15s, box-shadow .15s, transform .1s !important;
+/* ── Sidebar bubble head ─────────────────────────────────────────────────── */
+@keyframes wg-bubble-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%       { transform: translateY(-6px) rotate(0.4deg); }
 }
-.wg-drill-btn:first-of-type button, .wg-drill-btn button:first-child { /* ⚡ Sharpen */
-  border-color: rgba(245,197,24,0.45) !important; color: #fcd34d !important;
-  background: rgba(245,197,24,0.06) !important;
+.wg-bubble-head {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 1.4rem 0.5rem 0.6rem; user-select: none;
 }
-.wg-drill-btn:first-of-type button:hover { border-color: #f5c518 !important; box-shadow: 0 0 10px rgba(245,197,24,0.25) !important; }
-.wg-drill-label {
-  font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.2em;
-  font-size: 0.72rem; color: var(--wg-muted);
-  border-bottom: 1px solid var(--wg-border); padding-bottom: 0.3rem;
+.wg-bubble-head-inner {
+  animation: wg-bubble-bob 2.8s ease-in-out infinite;
+  transition: transform 0.22s ease;
+  cursor: pointer;
 }
-#wg-practice .wg-drill-label { color: #9e9288 !important; border-color: #e0d8cc !important; }
-#wg-practice .wg-drill-btn button {
-  background: rgba(45,106,79,0.05) !important;
-  border-color: rgba(45,106,79,0.3) !important;
-  color: #2d6a4f !important;
+.wg-bubble-head-inner:hover {
+  animation-play-state: paused;
+  transform: scale(1.1) rotate(5deg) !important;
 }
-#wg-practice .wg-drill-btn button:hover {
-  border-color: #2d6a4f !important;
-  box-shadow: 0 0 8px rgba(45,106,79,0.2) !important;
-  transform: scale(1.02) !important;
+.wg-bubble-avatar-large {
+  width: 90px; height: 90px; border-radius: 50%;
+  border: 2.5px solid var(--wg-green);
+  box-shadow: 0 0 18px rgba(74,222,128,0.22), 0 3px 10px rgba(0,0,0,0.35);
+  object-fit: cover; display: block;
 }
+.wg-bubble-char-name {
+  font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.18em;
+  font-size: 0.68rem; color: var(--wg-muted);
+  margin-top: 0.5rem; text-align: center;
+}
+#wg-practice .wg-bubble-avatar-large {
+  border-color: #2d6a4f;
+  box-shadow: 0 0 16px rgba(45,106,79,0.18), 0 2px 8px rgba(0,0,0,0.1);
+}
+#wg-practice .wg-bubble-char-name { color: #9e9288; }
 
 /* ── Sci-fi flicker input overlay ────────────────────────────────────────── */
 .wg-flicker-wrap { position: relative; }
@@ -1510,14 +1515,28 @@ window.wgPlayConfirm = function() {
 /* ── Update practice header with selected coach ─────────────────────────── */
 window.wgUpdateCoachHeader = function() {
   var c = window._wgSelectedChar;
-  if (!c || c.name === 'AI') return; // keep default mug + WITGYM text
+  if (!c) return;
+
+  // Always update sidebar bubble head regardless of character type
+  var bubbleImg = document.getElementById('wg-bubble-avatar-large');
+  var bubbleName = document.getElementById('wg-bubble-char-name');
+  if (bubbleImg) {
+    bubbleImg.src = c.avatarUrl || '';
+    bubbleImg.alt = c.name;
+    if (c.fallbackUrl) bubbleImg.onerror = function() { this.onerror = null; this.src = c.fallbackUrl; };
+    bubbleImg.style.display = 'block';
+  }
+  if (bubbleName) bubbleName.textContent = c.name === 'AI' ? 'AI COACH' : c.name.toUpperCase() + ' COACH';
+
+  if (c.name === 'AI') return; // keep default mug + WITGYM text for practice bar header
+
   var mugWrap = document.querySelector('#wg-coach-avatar-wrap svg.wg-mascot-like, #wg-coach-avatar-wrap svg');
   if (mugWrap) mugWrap.style.display = 'none';
   var img = document.getElementById('wg-coach-avatar');
   if (img) {
     img.src = c.avatarUrl || '';
     img.alt = c.name;
-    if (c.fallbackUrl) img.onerror = function() { this.onerror=null; this.src=c.fallbackUrl; };
+    if (c.fallbackUrl) img.onerror = function() { this.onerror = null; this.src = c.fallbackUrl; };
     img.style.display = 'block';
   }
   var nameEl = document.getElementById('wg-coach-name');
@@ -1875,6 +1894,8 @@ def _bg_warmup():
     global _warmup_error
     try:
         _get_shared()
+        from witgym.tts import _get_pipeline
+        _get_pipeline()  # pre-warm Kokoro so first TTS call isn't slow
     except Exception as e:
         logger.exception("Background warmup failed")
         _warmup_error = _format_warmup_error(e)
@@ -2006,6 +2027,18 @@ _MUG_SVG = (
 _ROAST_FLOAT_HTML = '<div id="wg-roast-host" aria-hidden="true"></div>'
 
 
+def _sidebar_bubble_head_html() -> str:
+    ai_src = char_avatar_svg("AI")
+    return (
+        '<div class="wg-bubble-head">'
+        '<div class="wg-bubble-head-inner">'
+        f'<img id="wg-bubble-avatar-large" class="wg-bubble-avatar-large" src="{ai_src}" alt="AI Coach"/>'
+        '</div>'
+        '<div class="wg-bubble-char-name" id="wg-bubble-char-name">AI COACH</div>'
+        '</div>'
+    )
+
+
 def _practice_header_html() -> str:
     # IDs wg-coach-avatar, wg-coach-name, wg-coach-role are injected by wgUpdateCoachHeader() JS
     # on start_btn click — no Gradio re-render needed.
@@ -2095,11 +2128,10 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
                 if audio_url:
                     event.response.tts_audio_url = audio_url
                     session["traces"][-1] = (user_input, event.response)
-                    yield (
-                        format_transcript_html(session["traces"], show_debug=show_debug, selected_char=selected_char),
-                        gr.update(value="", interactive=True),
-                        session,
-                    )
+                    final_html = format_transcript_html(session["traces"], show_debug=show_debug, selected_char=selected_char)
+                    # Strip audio from session so gr.State doesn't carry ~500KB per turn
+                    event.response.tts_audio_url = None
+                    yield (final_html, gr.update(value="", interactive=True), session)
                 return
             yield (
                 format_transcript_with_streaming(session["traces"], stream_state, show_debug=show_debug, selected_char=selected_char),
@@ -2219,16 +2251,7 @@ def build_ui():
                                 outputs=[transcript, user_input, session_state],
                                 show_progress="full", show_progress_on=submit_btn,
                             )
-                        gr.HTML('<div class="wg-sidebar-label wg-drill-label" style="margin-top:.85rem">Coach Drills</div>')
-                        drill_btns = []
-                        _DRILL_ICONS = {"sharpen it": "⚡", "different angle": "↗", "explain the joke": "🔍"}
-                        for label, drill_text in DRILL_ACTIONS:
-                            icon = _DRILL_ICONS.get(label, "↻")
-                            db = gr.Button(
-                                f"{icon} {label}", size="sm", variant="secondary",
-                                elem_classes=["wg-drill-btn"],
-                            )
-                            drill_btns.append((db, drill_text))
+                        gr.HTML(_sidebar_bubble_head_html())
 
         # ── Event wiring ──────────────────────────────────────────
 
@@ -2264,13 +2287,6 @@ def build_ui():
             inputs=[show_debug_state],
             outputs=[transcript, user_input, session_state],
         )
-        for db, drill_text in drill_btns:
-            db.click(
-                fn=practice,
-                inputs=[gr.State(drill_text), session_state, show_debug_state],
-                outputs=[transcript, user_input, session_state],
-                show_progress="full", show_progress_on=submit_btn,
-            )
         demo.load(fn=_on_page_load, outputs=transcript, show_progress="hidden")
 
     return demo

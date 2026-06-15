@@ -113,7 +113,7 @@ def _voice_gender(selected_char: str) -> str:
 
 
 def _allow_browser_voice(selected_char: str) -> str:
-    return "true" if _voice_gender(selected_char) == "neutral" else "false"
+    return "true"  # always allow browser TTS fallback for old turns that lost Kokoro audio
 
 
 def _reply_actions_html() -> str:
