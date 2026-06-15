@@ -134,14 +134,15 @@ def _reply_actions_html() -> str:
     )
 
 
-def _compact_reply_html(route: str, selected: str, *, coaching_hint: str = "", selected_char: str = "AI") -> str:
+def _compact_reply_html(route: str, selected: str, *, coaching_hint: str = "", selected_char: str = "AI", tts_audio_url: str = "") -> str:
     hint = f'<div class="wg-dim-italic" style="margin-top:.35rem;font-size:.85rem">{_esc(coaching_hint)}</div>' if coaching_hint else ""
     return (
         f'{_mode_badge_html(route)}'
         f'<div class="wg-coach-reply wg-coach-reply--compact" '
         f'data-char="{_esc(selected_char or "AI")}" '
         f'data-voice-gender="{_voice_gender(selected_char or "AI")}" '
-        f'data-allow-browser-voice="{_allow_browser_voice(selected_char or "AI")}">'
+        f'data-allow-browser-voice="{_allow_browser_voice(selected_char or "AI")}" '
+        f'data-audio="{_esc(tts_audio_url or "")}">'
         f'{_reply_actions_html()}'
         f'{_coach_header_html(selected_char)}'
         f'<div class="wg-coach-reply-body">{_esc(selected)}</div>'
@@ -517,7 +518,7 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
 
     if result.route in ("banter", "smalltalk"):
         parts += [
-            _compact_reply_html("banter", result.selected, selected_char=selected_char),
+            _compact_reply_html("banter", result.selected, selected_char=selected_char, tts_audio_url=result.tts_audio_url or ""),
             '</div>',
         ]
         return "".join(parts)
@@ -529,6 +530,7 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
                 result.selected,
                 coaching_hint="coaching mode — waiting for your answer",
                 selected_char=selected_char,
+                tts_audio_url=result.tts_audio_url or "",
             ),
             '</div>',
         ]

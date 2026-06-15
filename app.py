@@ -764,15 +764,6 @@ body.wg-light-mode footer { display: none !important; }
 #wg-practice .wg-twist-score { color: #b45309 !important; }
 #wg-practice .wg-twist-label { color: #9e9288 !important; }
 
-/* ── Rep counter ────────────────────────────────────────────────────────── */
-.wg-rep-count {
-  font-family: 'Bebas Neue', sans-serif; font-size: 0.72rem;
-  letter-spacing: 0.2em; color: var(--wg-green); padding: 0.1rem 0.5rem;
-  border: 1px solid rgba(45,106,79,0.35); border-radius: 20px;
-  background: rgba(45,106,79,0.06);
-  transition: opacity .3s;
-}
-.wg-rep-count:empty { display: none; }
 
 /* ── Drill chips ─────────────────────────────────────────────────────────── */
 .wg-drill-chips {
@@ -1286,7 +1277,7 @@ window.wgPlayClack = function() {
   observe();
 })();
 
-/* Drill chip: prefill textbox and focus it */
+/* Drill chip: prefill textbox then auto-submit */
 window.wgDrill = function(text) {
   var ta = document.querySelector('#wg-chat-shell textarea');
   if (!ta) return;
@@ -1295,24 +1286,13 @@ window.wgDrill = function(text) {
   ta.dispatchEvent(new Event('input', { bubbles: true }));
   ta.focus();
   ta.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  /* Auto-submit via the main button (elem_id lands on the <button> directly in Gradio) */
+  setTimeout(function() {
+    var btn = document.querySelector('#wg-submit-btn');
+    if (btn && !btn.disabled) btn.click();
+  }, 60);
 };
 
-/* Rep counter: count completed (non-thinking) turns */
-(function(){
-  function updateRep() {
-    var turns = document.querySelectorAll('.wg-turn:not(.wg-turn--thinking)');
-    var el = document.getElementById('wg-rep-count');
-    if (!el) return;
-    el.textContent = turns.length > 0 ? 'REP ' + turns.length : '';
-  }
-  function watchTranscript() {
-    var t = document.querySelector('.wg-transcript');
-    if (!t) { setTimeout(watchTranscript, 600); return; }
-    new MutationObserver(updateRep).observe(t, {childList: true, subtree: true});
-    updateRep();
-  }
-  watchTranscript();
-})();
 
 window.wgClose = function() {
   var o = document.getElementById('wg-modal-overlay');
@@ -2039,7 +2019,7 @@ def _practice_header_html() -> str:
         '<div id="wg-coach-name" class="wg-practice-logo">WIT<span>GYM</span></div>'
         '<div id="wg-coach-role" class="wg-practice-sub">Comedy Coaching Engine</div>'
         '</div>'
-        '<span id="wg-rep-count" class="wg-rep-count" aria-live="polite"></span>'
+        ''
         '</div>'
     )
 
@@ -2231,7 +2211,14 @@ def build_ui():
                                 f"{tag.lower()} · {text}", size="sm", variant="secondary",
                                 elem_classes=["wg-starter-btn"],
                             )
-                            sb.click(fn=fill_starter, inputs=[gr.State(text)], outputs=user_input, queue=False)
+                            sb.click(
+                                fn=fill_starter, inputs=[gr.State(text)], outputs=user_input, queue=False,
+                            ).then(
+                                fn=practice,
+                                inputs=[user_input, session_state, show_debug_state],
+                                outputs=[transcript, user_input, session_state],
+                                show_progress="full", show_progress_on=submit_btn,
+                            )
                         gr.HTML('<div class="wg-sidebar-label wg-drill-label" style="margin-top:.85rem">Coach Drills</div>')
                         drill_btns = []
                         _DRILL_ICONS = {"sharpen it": "⚡", "different angle": "↗", "explain the joke": "🔍"}
