@@ -561,7 +561,7 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
     # Winning persona label — use pre-compression value stored in response
     winning_persona = result.winning_persona
     persona_label = (
-        f' · <button class="wg-persona-label" type="button" onclick="{_esc(_persona_onclick(winning_persona))}">{_esc(winning_persona)}</button>'
+        f' · <button class="wg-persona-label" type="button" data-persona="{_esc(winning_persona)}">{_esc(winning_persona)}</button>'
         if winning_persona else ""
     )
 
