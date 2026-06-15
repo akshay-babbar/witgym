@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WitGym Trace Fixture</title>
+  <style>
+    body {
+      margin: 0;
+      background: #f5f0e8;
+      color: #2a2118;
+      font-family: Georgia, serif;
+    }
+    #wg-practice {
+      --wg-border: #e0d8cc;
+      --wg-surf2: #f5f2eb;
+      --wg-muted: #9e9288;
+      --wg-white: #2a2118;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    #wg-chat-shell {
+      background: #faf9f6;
+      border: 1px solid #e0d8cc;
+      border-radius: 16px;
+      padding: 18px;
+    }
+    .html-container {
+      min-height: 440px;
+      max-height: 580px;
+      overflow-y: auto;
+      border: 1px solid #e0d8cc;
+      border-radius: 14px;
+      background: #fffdf8;
+      padding: 18px;
+      box-sizing: border-box;
+    }
+    .wg-mode-badge {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid #fde047;
+      background: #fef9c3;
+      color: #92400e;
+      font: 700 12px/1 sans-serif;
+      letter-spacing: 0.08em;
+    }
+    .wg-coach-reply {
+      margin-top: 0.85rem;
+      padding: 0.9rem 1.1rem;
+      background: #f0fdf4;
+      border: 1px solid #4ade80;
+      border-left: 3px solid #2d6a4f;
+      border-radius: 10px;
+      position: relative;
+    }
+    .wg-coach-reply-header {
+      font: 700 13px/1 sans-serif;
+      letter-spacing: 0.14em;
+      color: #2d6a4f;
+      margin-bottom: 0.4rem;
+      text-transform: uppercase;
+    }
+    .wg-coach-reply-body {
+      font-size: 28px;
+      line-height: 1.25;
+      color: #14532d;
+      font-weight: 600;
+    }
+    .wg-debug-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-top: 1rem;
+    }
+    .wg-debug-toggle-line {
+      flex: 1;
+      height: 1px;
+      background: #e0d8cc;
+    }
+    .wg-debug-toggle-label {
+      border: 1px solid #e0d8cc;
+      background: #f5f2eb;
+      color: #9e9288;
+      border-radius: 999px;
+      padding: 0.12rem 0.45rem;
+      font: 700 12px/1 sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .wg-trace-block {
+      border-radius: 10px;
+      padding: 0.75rem 0.9rem;
+      margin: 0.35rem 0;
+      border: 1px solid #e0d8cc;
+      background: #faf9f6;
+    }
+    .wg-trace-title {
+      font: 700 12px/1 sans-serif;
+      letter-spacing: 0.14em;
+      color: #9e9288;
+      margin-bottom: 0.45rem;
+      text-transform: uppercase;
+    }
+    .wg-trace-json {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: #3d3429;
+    }
+    .wg-trace-launch-wrap { display: flex; justify-content: flex-start; margin-top: 0.75rem; }
+    .wg-trace-launch {
+      display: inline-flex; align-items: center; gap: 0.55rem;
+      border: 1.5px solid rgba(180,83,9,0.34);
+      background: linear-gradient(180deg, rgba(255,250,241,0.95), rgba(245,240,232,0.98));
+      color: #b45309; border-radius: 999px; padding: 0.55rem 0.95rem; cursor: pointer;
+      font: 700 14px/1 sans-serif; letter-spacing: 0.08em;
+    }
+    .wg-trace-launch-icon {
+      width: 1.9rem; height: 1.9rem; border-radius: 999px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.95), rgba(255,241,220,0.92) 42%, rgba(255,231,189,0.88));
+      border: 1px solid rgba(180,83,9,0.2);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.65), 0 4px 14px rgba(180,83,9,0.14);
+    }
+    .wg-trace-launch-icon svg { width: 1.08rem; height: 1.08rem; display: block; }
+    .wg-trace-launch-text { display: inline-flex; align-items: center; }
+    #wg-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.58); display: none;
+      align-items: center; justify-content: center; padding: 18px;
+    }
+    #wg-modal {
+      background: #fffff8; border-radius: 18px; width: min(760px, 100%); max-height: 88vh; overflow: auto;
+      padding: 20px; box-sizing: border-box; border: 1px solid #e0d8cc;
+    }
+    .wg-modal-x { float: right; border: none; background: #1a1a1a; color: #fff; border-radius: 999px; width: 32px; height: 32px; cursor: pointer; }
+    .wg-trace-modal-head { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; padding-bottom: 0.8rem; border-bottom: 2px solid #e0d8cc; }
+    .wg-trace-modal-title { font: 700 18px/1 sans-serif; letter-spacing: 0.12em; color: #2d6a4f; }
+    .wg-trace-modal-sub { color: #9e9288; font-style: italic; }
+    .wg-trace-summary { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1rem; }
+    .wg-trace-pill { display: inline-flex; gap: 0.35rem; padding: 0.28rem 0.62rem; border-radius: 999px; border: 1px solid #e0d8cc; background: #fff; font: 12px/1.2 monospace; }
+    .wg-trace-logbox { background: #171717; color: #f5f0e8; border-radius: 14px; padding: 0.9rem 1rem; margin-bottom: 1rem; }
+    .wg-trace-logtitle { font: 700 12px/1 sans-serif; letter-spacing: 0.16em; color: #f5c518; margin-bottom: 0.55rem; }
+    .wg-trace-logline { display: grid; grid-template-columns: 118px 64px 1fr; gap: 0.7rem; padding: 0.24rem 0; font: 12px/1.45 monospace; }
+    .wg-trace-step { color: #93c5fd; }
+    .wg-trace-status { color: #86efac; text-transform: uppercase; }
+    .wg-trace-detail { color: #f5f0e8; opacity: 0.92; }
+    .wg-trace-jsonbox { background: #faf9f6; border: 1px solid #e0d8cc; border-radius: 14px; overflow: hidden; }
+    .wg-trace-jsonhead { font: 700 12px/1 sans-serif; letter-spacing: 0.15em; color: #9e9288; padding: 0.75rem 0.95rem; border-bottom: 1px solid #e0d8cc; }
+    .wg-trace-jsonpre { margin: 0; padding: 0.95rem 1rem 1.1rem; max-height: 48vh; overflow: auto; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; font: 12px/1.55 monospace; color: #3d3429; }
+    @media (max-width: 640px) {
+      #wg-practice {
+        padding: 14px;
+      }
+      #wg-practice #wg-chat-shell .html-container {
+        min-height: 180px !important;
+        max-height: none !important;
+      }
+      #wg-practice .wg-trace-json {
+        font-size: 0.72rem;
+        line-height: 1.45;
+      }
+      .wg-trace-logline { grid-template-columns: 1fr; gap: 0.15rem; }
+    }
+  </style>
+</head>
+<body class="wg-light-mode">
+  <div id="wg-practice">
+    <div id="wg-chat-shell">
+      <div class="html-container">
+        <div class="wg-transcript" data-latest-trace='{"route":"quick_wit","winning_persona":"absurdist","selected":"Final selected line","metadata":{"archetype":"status_assertion","tension_type":"identity_expose","violation_distance":"mild","twist_potential":7,"connector":"manager"},"retrieved_scenes":[{"show":"The Office","character":"Michael Scott","setup":"Michael claims authority he has not earned yet.","response":"I am not superstitious, but I am a little stitious."}],"candidates":[{"persona":"cynic","text":"Candidate one"},{"persona":"absurdist","text":"Final selected line"}],"logs":[{"step":"metadata","status":"ok","detail":"twist=7 archetype=status_assertion"},{"step":"retrieval","status":"ok","detail":"Michael Scott:status_assertion"},{"step":"candidate_generation","status":"ok","detail":"cynic:2w, absurdist:3w"},{"step":"ranking","status":"ok","detail":"absurdist"},{"step":"compression","status":"ok","detail":"selected line finalized"}]}'>
+        <span class="wg-mode-badge">🎯 QUICK WIT</span>
+        <div class="wg-coach-reply">
+          <div class="wg-coach-reply-header">Your Humor Coach · absurdist</div>
+          <div class="wg-coach-reply-body">Since my entire management strategy is just pretending to understand things, I'm currently writing all my performance reviews in crayon so the ink doesn't leak through the lies.</div>
+        </div>
+        <div class="wg-trace-launch-wrap">
+          <button class="wg-trace-launch" type="button" onclick="wgOpenLatestTrace()">
+            <span class="wg-trace-launch-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6.5 7.5h4M6.5 12h6M6.5 16.5h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <rect x="4" y="4.5" width="11" height="15" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M16.5 8.5l1.4-1.4 2.5 2.5-1.4 1.4M15.7 9.3l2.5 2.5M15.2 14.8l3.6-3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="wg-trace-launch-text">Open Trace</span>
+          </button>
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="wg-modal-overlay" onclick="if(event.target===this)this.style.display='none'">
+    <div id="wg-modal">
+      <button class="wg-modal-x" onclick="document.getElementById('wg-modal-overlay').style.display='none'">✕</button>
+      <div id="wg-modal-body"></div>
+    </div>
+  </div>
+  <script>
+    function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+    function wgOpenLatestTrace() {
+      var transcript = document.querySelector('.wg-transcript');
+      var raw = transcript && transcript.dataset ? transcript.dataset.latestTrace : '';
+      var body = document.getElementById('wg-modal-body');
+      var overlay = document.getElementById('wg-modal-overlay');
+      var payload = JSON.parse(raw || '{}');
+      var summary = [
+        ['route', payload.route || 'quick_wit'],
+        ['winner', payload.winning_persona || 'n/a'],
+        ['twist', payload.metadata && payload.metadata.twist_potential != null ? String(payload.metadata.twist_potential) : 'n/a'],
+        ['scenes', String((payload.retrieved_scenes || []).length)],
+        ['candidates', String((payload.candidates || []).length)]
+      ].map(function(item){ return '<span class="wg-trace-pill"><strong>'+item[0]+'</strong> '+item[1]+'</span>'; }).join('');
+      var logs = (payload.logs || []).map(function(line){
+        return '<div class="wg-trace-logline"><span class="wg-trace-step">'+esc(line.step||'')+'</span><span class="wg-trace-status">'+esc(line.status||'')+'</span><span class="wg-trace-detail">'+esc(line.detail||'')+'</span></div>';
+      }).join('');
+      var jsonPretty = esc(JSON.stringify(payload, null, 2));
+      body.innerHTML =
+        '<div class="wg-trace-modal-head"><div><div class="wg-trace-modal-title">POST-MORTEM TRACE</div><div class="wg-trace-modal-sub">Pretty JSON + execution log for the latest turn.</div></div></div>' +
+        '<div class="wg-trace-summary">' + summary + '</div>' +
+        '<div class="wg-trace-logbox"><div class="wg-trace-logtitle">EXECUTION LOG</div>' + logs + '</div>' +
+        '<div class="wg-trace-jsonbox"><div class="wg-trace-jsonhead">TRACE JSON</div><pre class="wg-trace-jsonpre">'+jsonPretty+'</pre></div>';
+      overlay.style.display='flex';
+    }
+  </script>
+</body>
+</html>
