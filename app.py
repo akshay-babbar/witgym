@@ -25,6 +25,7 @@ from witgym.debug_render import (
 )
 from witgym import config
 from witgym.avatars import char_avatar_url, char_avatar_svg
+from witgym.tts import synthesize_line
 
 INDEX_PATH = os.getenv("WITGYM_INDEX_PATH", config.INDEX_PATH)
 _FAVICON = Path(__file__).parent / "assets" / "favicon.png"
@@ -1056,16 +1057,33 @@ body.wg-light-mode footer { display: none !important; }
 }
 #wg-practice .wg-coach-reply-avatar { background: rgba(0,0,0,0.05); }
 
-/* ── Copy button ─────────────────────────────────────────────────────────── */
-.wg-copy-btn {
-  position: absolute; top: 0.55rem; right: 0.6rem;
-  background: transparent; border: none; cursor: pointer;
-  font-size: 0.95rem; color: var(--wg-muted); opacity: 0.5;
-  transition: opacity .15s, color .15s; padding: 0; line-height: 1;
+/* ── Reply action buttons ────────────────────────────────────────────────── */
+.wg-reply-actions {
+  position: absolute; top: 0.5rem; right: 0.6rem;
+  display: inline-flex; align-items: center; gap: 0.5rem;
 }
-.wg-copy-btn:hover { opacity: 1; color: var(--wg-yellow); }
-#wg-practice .wg-copy-btn { color: #9e9288; }
-#wg-practice .wg-copy-btn:hover { color: #b45309; }
+.wg-action-btn {
+  background: transparent; border: none; cursor: pointer;
+  font-size: 0.95rem; color: var(--wg-muted); opacity: 0.58;
+  transition: opacity .15s, color .15s, transform .15s;
+  padding: 0; line-height: 1;
+}
+.wg-action-btn:hover { opacity: 1; color: var(--wg-yellow); transform: translateY(-1px); }
+#wg-practice .wg-action-btn { color: #9e9288; }
+#wg-practice .wg-action-btn:hover { color: #b45309; }
+.wg-speak-btn.wg-speaking { opacity: 1; color: var(--wg-green); }
+#wg-practice .wg-speak-btn.wg-speaking { color: #2d6a4f; }
+.wg-coach-reply.wg-speaking .wg-coach-reply-avatar,
+.wg-coach-reply.wg-speaking #wg-coach-avatar,
+.wg-coach-reply.wg-speaking svg {
+  animation: wg-coach-speaking 0.9s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes wg-coach-speaking {
+  0%, 100% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-1px) scale(1.04); }
+  65% { transform: translateY(1px) scale(0.99); }
+}
 
 /* ── Hidden char state textbox ───────────────────────────────────────────── */
 #wg-char-hidden { position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none; }
@@ -1528,6 +1546,130 @@ window.wgCopy = function(btn) {
   }
 };
 
+window.wgStopSpeaking = function() {
+  if (window._wgAudioPlayer) {
+    try {
+      window._wgAudioPlayer.pause();
+      window._wgAudioPlayer.currentTime = 0;
+    } catch (e) {}
+    window._wgAudioPlayer = null;
+  }
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+  if (window._wgSpeakingBtn) {
+    window._wgSpeakingBtn.classList.remove('wg-speaking');
+    window._wgSpeakingBtn.textContent = '▶';
+  }
+  if (window._wgSpeakingReply) {
+    window._wgSpeakingReply.classList.remove('wg-speaking');
+  }
+  window._wgSpeakingBtn = null;
+  window._wgSpeakingReply = null;
+};
+
+window.wgVoiceProfile = function(charName) {
+  var key = (charName || 'AI').toLowerCase();
+  var profiles = {
+    ai:      { rate: 1.02, pitch: 1.0, keywords: ['google', 'samantha', 'aria', 'female', 'zira'] },
+    jim:     { rate: 1.03, pitch: 0.96, keywords: ['daniel', 'alex', 'tom', 'male'] },
+    pam:     { rate: 0.98, pitch: 1.08, keywords: ['samantha', 'victoria', 'karen', 'female'] },
+    michael: { rate: 1.08, pitch: 1.05, keywords: ['fred', 'junior', 'male'] },
+    dwight:  { rate: 0.92, pitch: 0.82, keywords: ['alex', 'david', 'male'] },
+    kevin:   { rate: 0.86, pitch: 0.84, keywords: ['jorge', 'male'] },
+    andy:    { rate: 1.12, pitch: 1.12, keywords: ['fred', 'male'] },
+    stanley: { rate: 0.83, pitch: 0.75, keywords: ['ralph', 'male'] },
+    angela:  { rate: 0.94, pitch: 1.14, keywords: ['samantha', 'female'] },
+    ryan:    { rate: 1.01, pitch: 0.9, keywords: ['alex', 'male'] },
+    kelly:   { rate: 1.14, pitch: 1.2, keywords: ['victoria', 'female'] }
+  };
+  return profiles[key] || profiles.ai;
+};
+
+window.wgPickVoice = function(keywords) {
+  if (!window.speechSynthesis || !window.speechSynthesis.getVoices) return null;
+  var voices = window.speechSynthesis.getVoices() || [];
+  if (!voices.length) return null;
+  var lowered = (keywords || []).map(function(k) { return k.toLowerCase(); });
+  for (var i = 0; i < lowered.length; i++) {
+    var match = voices.find(function(voice) {
+      var hay = (voice.name + ' ' + (voice.lang || '')).toLowerCase();
+      return hay.indexOf(lowered[i]) !== -1;
+    });
+    if (match) return match;
+  }
+  return voices.find(function(voice) { return /^en(-|_)/i.test(voice.lang || ''); }) || voices[0];
+};
+
+window.wgSpeak = function(btn) {
+  var reply = btn.closest('.wg-coach-reply');
+  var body = reply && reply.querySelector('.wg-coach-reply-body');
+  if (!reply || !body) return;
+  var text = body.textContent.trim();
+  if (!text) return;
+  if (window._wgSpeakingBtn === btn) {
+    window.wgStopSpeaking();
+    return;
+  }
+  window.wgStopSpeaking();
+
+  var audioSrc = reply.dataset.audio || '';
+  if (audioSrc) {
+    try {
+      var audio = new Audio(audioSrc);
+      audio.onplay = function() {
+        window._wgSpeakingBtn = btn;
+        window._wgSpeakingReply = reply;
+        window._wgAudioPlayer = audio;
+        btn.classList.add('wg-speaking');
+        btn.textContent = '■';
+        reply.classList.add('wg-speaking');
+      };
+      audio.onended = window.wgStopSpeaking;
+      audio.onerror = function() {
+        window._wgAudioPlayer = null;
+        window.wgStopSpeaking();
+      };
+      var playPromise = audio.play();
+      if (playPromise && playPromise.catch) {
+        playPromise.catch(function() {
+          window._wgAudioPlayer = null;
+          window.wgStopSpeaking();
+        });
+      }
+      return;
+    } catch (e) {}
+  }
+
+  if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
+  var profile = window.wgVoiceProfile(reply.dataset.char || 'AI');
+  var utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = profile.rate;
+  utterance.pitch = profile.pitch;
+  utterance.voice = window.wgPickVoice(profile.keywords);
+  utterance.onstart = function() {
+    window._wgSpeakingBtn = btn;
+    window._wgSpeakingReply = reply;
+    btn.classList.add('wg-speaking');
+    btn.textContent = '■';
+    reply.classList.add('wg-speaking');
+  };
+  utterance.onend = window.wgStopSpeaking;
+  utterance.onerror = window.wgStopSpeaking;
+  window.speechSynthesis.speak(utterance);
+};
+
+try {
+  if (window.speechSynthesis && window.speechSynthesis.getVoices) {
+    window.speechSynthesis.getVoices();
+    if ('onvoiceschanged' in window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = function() {
+        window.speechSynthesis.getVoices();
+      };
+    }
+  }
+} catch (e) {}
+
 /* ── Sci-fi flickering input placeholder ─────────────────────────────────── */
 /* ── Roast chip spawner — multi-directional ───────────────────────────────── */
 window.wgSpawnRoasts = function() {
@@ -1897,6 +2039,7 @@ def practice(user_input: str, session, show_debug: bool, progress=gr.Progress())
             elif event.phase == "final_start":
                 progress(0.92, desc="Polishing — almost there…")
             elif event.phase == "done" and event.response:
+                event.response.tts_audio_url = synthesize_line(event.response.selected, selected_char)
                 session["traces"].append((user_input, event.response))
                 session["traces"] = session["traces"][-5:]
                 session["last_wit_response"] = engine._last_wit_response

@@ -103,31 +103,28 @@ def _coach_header_html(selected_char: str) -> str:
     )
 
 
-_COPY_BTN = (
-    '<button class="wg-copy-btn" onclick="wgCopy(this)" title="Copy to clipboard" '
-    'aria-label="Copy line to clipboard">⎘</button>'
-)
+def _reply_actions_html() -> str:
+    return (
+        '<div class="wg-reply-actions">'
+        '<button class="wg-action-btn wg-copy-btn" onclick="wgCopy(this)" title="Copy to clipboard" '
+        'aria-label="Copy line to clipboard">⎘</button>'
+        '<button class="wg-action-btn wg-speak-btn" onclick="wgSpeak(this)" title="Let your coach speak" '
+        'aria-label="Let your coach speak">▶</button>'
+        '</div>'
+    )
 
 
 def _compact_reply_html(route: str, selected: str, *, coaching_hint: str = "", selected_char: str = "AI") -> str:
     hint = f'<div class="wg-dim-italic" style="margin-top:.35rem;font-size:.85rem">{_esc(coaching_hint)}</div>' if coaching_hint else ""
     return (
         f'{_mode_badge_html(route)}'
-        '<div class="wg-coach-reply wg-coach-reply--compact">'
-        f'{_copy_btn_html()}'
+        f'<div class="wg-coach-reply wg-coach-reply--compact" data-char="{_esc(selected_char or "AI")}">'
+        f'{_reply_actions_html()}'
         f'{_coach_header_html(selected_char)}'
         f'<div class="wg-coach-reply-body">{_esc(selected)}</div>'
         f'{hint}'
         '</div>'
     )
-
-
-def _copy_btn_html() -> str:
-    return (
-        '<button class="wg-copy-btn" onclick="wgCopy(this)" title="Copy to clipboard" '
-        'aria-label="Copy line to clipboard">⎘</button>'
-    )
-
 
 def _explanation_panel_html(explanation: str) -> str:
     return (
@@ -539,8 +536,12 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
     )
     parts += [
         _mode_badge_html(result.route),
-        f'<div class="wg-coach-reply{new_cls}" data-alts="{alts_json}" data-alt-idx="0">',
-        f'{_copy_btn_html()}',
+        (
+            f'<div class="wg-coach-reply{new_cls}" data-alts="{alts_json}" data-alt-idx="0" '
+            f'data-char="{_esc(selected_char or "AI")}" '
+            f'data-audio="{_esc(result.tts_audio_url or "")}">'
+        ),
+        f'{_reply_actions_html()}',
         coach_hdr,
         f'<div class="wg-coach-reply-body">{_esc(result.selected)}</div>',
         '</div>',

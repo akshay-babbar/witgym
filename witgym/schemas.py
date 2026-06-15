@@ -77,6 +77,7 @@ class WitGymResponse(BaseModel):
     retrieved_scenes: List[TranscriptScene]
     candidates: List[CandidateResponse]
     selected: str
+    tts_audio_url: Optional[str] = None
     route: str = "quick_wit"  # banter | quick_wit | coaching
     winning_persona: Optional[str] = None  # persona of the ranked winner (before compression)
     coaching_question: Optional[str] = None
