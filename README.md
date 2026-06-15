@@ -42,10 +42,10 @@ WitGym treats wit like a skill you can train:
 - **Pick a winner with an explicit rubric**
 - **Polish to one sharp line**
 
-### 30‑second demo
-- Paste: “My boss says he trusts me, but he rewrites every message I send.”
-- Watch the phases: extract → retrieve → draft → rank → polish (streaming)
-- Tap drills: **sharpen it**, **different angle**, **explain the joke**
+### Try it in 10 seconds
+- Paste any awkward moment (or tap a starter chip in the sidebar).
+- You’ll see the phases stream live: extract → retrieve → draft → rank → polish.
+- Then iterate with drills: **sharpen it**, **different angle**, **explain why it works**.
 
 ### What makes it different
 - **CBR‑RAG on comedy mechanics**: retrieval is driven by archetype, tension, violation distance, and subtext — not by copying jokes or matching keywords.
@@ -59,43 +59,43 @@ WitGym treats wit like a skill you can train:
 flowchart TD
   UserInput["User: paste awkward moment"] --> Router{"Route?"}
   Router -->|banter| Banter["One-sentence banter reply"]
-  Router -->|coaching| CoachAsk["Ask 1 clarifying question"]
+  Router -->|coaching| CoachAsk["Ask one clarifying question"]
   Router -->|quick_wit| Pipeline["CBR-RAG wit pipeline"]
 
   CoachAsk --> Pipeline
 
-  Pipeline --> Extract["Pass1: Extract ComedyMetadata (Qwen3.5-27B)"]
-  Extract --> Retrieve["Retrieve precedent scenes (bge-small + optional rerank)"]
-  Retrieve --> Generate["Pass2: Draft 2–3 persona candidates"]
-  Generate --> Rank["Pass3: Rank by explicit rubric"]
-  Rank --> Compress["Pass4: Optional compression to one sharp line"]
-  Compress --> Output["One final line + optional explain/sharpen drills"]
+  Pipeline --> Extract["Pass 1: Extract ComedyMetadata via Qwen3.5-27B"]
+  Extract --> Retrieve["Retrieve top precedent scenes via bge-small"]
+  Retrieve --> Generate["Pass 2: Draft persona candidates"]
+  Generate --> Rank["Pass 3: Rank by explicit rubric"]
+  Rank --> Compress["Pass 4: Compress to one sharp line"]
+  Compress --> Output["Final line + sharpen or explain drills"]
 ```
 
 ### Algorithm sketch (pipeline-level)
 
 ```mermaid
 sequenceDiagram
-  participant UI as GradioUI
-  participant Engine as WitGymEngine
-  participant LLM as Qwen3_5_27B
-  participant Embed as BGE_small
-  participant Index as OfficeIndex
+  participant UI as Gradio UI
+  participant Engine as WitGym Engine
+  participant LLM as Qwen 3.5 27B
+  participant Embed as BGE Small
+  participant Index as Office Index
 
-  UI->>Engine: respond_stream(user_input)
-  Engine->>LLM: Extract ComedyMetadata (JSON)
-  LLM-->>Engine: metadata
-  Engine->>Embed: encode(metadata_query)
-  Embed-->>Engine: query_embedding
-  Engine->>Index: cosine_search + optional rerank
-  Index-->>Engine: precedent_scenes
-  Engine->>LLM: Draft candidates (persona-gated)
-  LLM-->>Engine: 2–3 candidates
-  Engine->>LLM: Rank candidates (rubric)
+  UI->>Engine: respond_stream
+  Engine->>LLM: extract ComedyMetadata
+  LLM-->>Engine: metadata JSON
+  Engine->>Embed: encode metadata query
+  Embed-->>Engine: query embedding
+  Engine->>Index: cosine search and rerank
+  Index-->>Engine: precedent scenes
+  Engine->>LLM: draft persona candidates
+  LLM-->>Engine: candidates
+  Engine->>LLM: rank candidates
   LLM-->>Engine: winner
-  Engine->>LLM: Compress winner (optional)
-  LLM-->>Engine: final_line
-  Engine-->>UI: stream phases + final_line
+  Engine->>LLM: compress winner
+  LLM-->>Engine: final line
+  Engine-->>UI: stream all phases
 ```
 
 ### Evidence / badges
@@ -104,8 +104,8 @@ sequenceDiagram
 - **Off‑Brand UI** (`achievement:offbrand`): custom Gradio UI + streaming trace disclosure.
 
 ### Submission links
-- **Demo video**: [YouTube](https://youtu.be/enb5ua65RZM)
-- **Social post**: [LinkedIn](https://www.linkedin.com/posts/akshay4b_happy-to-share-a-project-ive-been-building-ugcPost-7472401282822111232-Q_nt/)
+- **Demo video**: [YouTube — https://youtu.be/enb5ua65RZM](https://youtu.be/enb5ua65RZM)
+- **Social post**: [LinkedIn — https://www.linkedin.com/posts/akshay4b_happy-to-share-a-project-ive-been-building-ugcPost-7472401282822111232-Q_nt/](https://www.linkedin.com/posts/akshay4b_happy-to-share-a-project-ive-been-building-ugcPost-7472401282822111232-Q_nt/)
 - **Validate README**: [Build Small validator](https://build-small-hackathon-field-guide.hf.space/submit)
 
 ### Technical details (grounded in the repo)
