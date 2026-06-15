@@ -1,0 +1,12 @@
+#!/bin/sh
+
+set -eu
+
+MSG_FILE="$1"
+CODEx_TRAILER="Co-authored-by: OpenAI Codex <codex@openai.com>"
+
+if grep -Fqx "$CODEx_TRAILER" "$MSG_FILE"; then
+  exit 0
+fi
+
+printf '\n%s\n' "$CODEx_TRAILER" >> "$MSG_FILE"

@@ -15,6 +15,12 @@ tags:
   - rag
   - case-based-reasoning
   - qwen
+  - thousand-token-wood
+  - achievement:offbrand
+  - achievement:best-agent
+  - achievement:best-demo
+  - achievement:bonus-quest-champion
+  - sponsor:openai
 ---
 
 # 🎭 WitGym
@@ -58,8 +64,8 @@ flowchart TD
     D[Pass 1 — Neurology of Comedy\nQwen3.5-27B extracts 10 structural fields]
     D --> E[Archetype + Tension + Distance\nComedyMetadata schema]
     E --> F[BGE-small embedder\n384-dim semantic vector]
-    F --> G[FAISS search\n4021 Office scene index]
-    G --> H[Top-3 precedent scenes\nwith why_it_works annotations]
+    F --> G[Cosine retrieval + rerank\n4021 Office scene index]
+    G --> H[Top-2 precedent scenes\nwith why_it_works annotations]
     H --> I[Pass 2 — Persona Generation\n2–3 candidates: Cynic · Conviction · Absurdist]
     I --> J[Pass 3 — Tournament Ranking\nranked by structural fit to the metadata]
     J --> K[Pass 4 — Compression\nreduce to one sharp line]
@@ -106,8 +112,8 @@ At query time, the user's situation is embedded with **BGE-small** (33M params) 
 flowchart LR
     A[User situation] --> B[BGE-small encoder\n33M params]
     B --> C[384-dim vector]
-    C --> D[FAISS index\n4021 scenes × 384 dims]
-    D --> E[Top-3 scenes\nby cosine similarity]
+    C --> D[NumPy cosine index\n4021 scenes × 384 dims]
+    D --> E[Top-2 scenes\nthen cross-encoder rerank]
     E --> F[Injected as few-shot\nexamples into Pass 2 prompt]
     style B fill:#1a3a5c,color:#4fc3f7
     style D fill:#1a3a5c,color:#4fc3f7
@@ -134,7 +140,7 @@ sequenceDiagram
 
     Note over E,I: RAG retrieval
     E->>I: embed(surface) → cosine search
-    I-->>E: 3 precedent scenes
+    I-->>E: 2 precedent scenes
 
     Note over E,L: Pass 2 — Candidate generation
     E->>L: Generate 2–3 personas (cynic, conviction, absurdist — twist-gated)
@@ -174,7 +180,7 @@ New elements animate in with a shimmer sweep + border glow system that stops on 
 |---|---|---|
 | **LLM** | Qwen3.5-27B via HF Inference Providers | ≤32B constraint; best instruction-following at this size |
 | **Embedder** | BGE-small (33M params) | Fast, accurate, runs on CPU in < 50ms |
-| **Index** | FAISS flat cosine, 4021 scenes × 384 dims | No server needed; loaded at startup from Hub dataset |
+| **Index** | NumPy cosine retrieval + optional 32M cross-encoder rerank, 4021 scenes × 384 dims | No server needed; loaded at startup from Hub dataset |
 | **UI** | Gradio 6.x on HF Spaces | Streaming SSE, custom CSS theming |
 | **Validation** | Pydantic v2 | Schema-enforced extraction; fallback on parse failure |
 | **Retry** | Exponential backoff on all LLM calls | Handles upstream provider flakiness gracefully |
@@ -187,6 +193,9 @@ New elements animate in with a shimmer sweep + border glow system that stops on 
 - **Embedder**: BGE-small 33M — runs on CPU, no GPU needed for retrieval ✓
 - **Deployed on HF Spaces**: Gradio app, streams via SSE ✓
 - **Open source**: Apache 2.0 licensed ✓
+- **Use case**: whimsical entertainment / comedy coaching grounded in structured precedent ✓
+- **Interaction design**: custom Gradio interface with progressive disclosure and streaming feedback ✓
+- **Agentic flow**: route -> extract -> retrieve -> generate -> rank -> compress ✓
 - No fine-tuning required — all comedy structure is in the retrieval index and prompts
 
 ---
