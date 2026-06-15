@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import base64
 import io
+import wave
 from threading import Lock
 
 import numpy as np
-import soundfile as sf
 from loguru import logger
 
 from witgym import config
@@ -61,7 +61,7 @@ def _get_pipeline():
 
 
 def synthesize_line(text: str, character: str = "AI") -> str | None:
-    """Return a FLAC data URL for the text, or None on failure."""
+    """Return a WAV data URL for the text, or None on failure."""
     if not config.TTS_ENABLED:
         return None
     text = (text or "").strip()
@@ -78,10 +78,15 @@ def synthesize_line(text: str, character: str = "AI") -> str | None:
         if not chunks:
             return None
         audio = np.concatenate(chunks)
+        pcm = (audio * 32767).astype(np.int16)
         buf = io.BytesIO()
-        sf.write(buf, audio, 24000, format="FLAC")
+        with wave.open(buf, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(24000)
+            wf.writeframes(pcm.tobytes())
         b64 = base64.b64encode(buf.getvalue()).decode("ascii")
-        return f"data:audio/flac;base64,{b64}"
+        return f"data:audio/wav;base64,{b64}"
     except Exception as exc:
         logger.warning(f"Kokoro TTS failed voice={voice}: {exc}")
         return None
