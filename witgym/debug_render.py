@@ -134,6 +134,61 @@ def _reply_actions_html() -> str:
     )
 
 
+def _trace_payload_from_result(result: WitGymResponse) -> dict[str, Any]:
+    metadata = result.metadata.model_dump(mode="json")
+    scenes = [scene.model_dump(mode="json") for scene in result.retrieved_scenes]
+    candidates = [candidate.model_dump(mode="json") for candidate in result.candidates]
+    logs = [
+        {"step": "metadata", "status": "ok", "detail": f"twist={metadata.get('twist_potential')} archetype={metadata.get('archetype')}"},
+        {"step": "retrieval", "status": "ok", "detail": ", ".join(f"{s['character']}:{s['archetype']}" for s in scenes) or "no precedent scenes"},
+        {"step": "candidate_generation", "status": "ok", "detail": ", ".join(f"{c['persona']}:{len(c['text'].split())}w" for c in candidates) or "no candidates"},
+        {"step": "ranking", "status": "ok", "detail": result.winning_persona or "none"},
+        {"step": "compression", "status": "ok", "detail": "selected line finalized"},
+    ]
+    return {
+        "route": result.route,
+        "winning_persona": result.winning_persona,
+        "selected": result.selected,
+        "metadata": metadata,
+        "retrieved_scenes": scenes,
+        "candidates": candidates,
+        "explanation": result.explanation,
+        "logs": logs,
+    }
+
+
+def _trace_payload_from_stream(state: "StreamingTurnState", selected_text: str) -> dict[str, Any]:
+    metadata = state.metadata.model_dump(mode="json") if state.metadata else None
+    scenes = [scene.model_dump(mode="json") for scene in state.scenes]
+    candidates = [candidate.model_dump(mode="json") for candidate in state.candidates]
+    logs = []
+    if metadata:
+        logs.append({"step": "metadata", "status": "ok", "detail": f"twist={metadata.get('twist_potential')} archetype={metadata.get('archetype')}"})
+    if scenes:
+        logs.append({"step": "retrieval", "status": "ok", "detail": ", ".join(f"{s['character']}:{s['archetype']}" for s in scenes)})
+    if candidates:
+        logs.append({"step": "candidate_generation", "status": "ok", "detail": ", ".join(f"{c['persona']}:{len(c['text'].split())}w" for c in candidates)})
+    if state.winning_persona:
+        logs.append({"step": "ranking", "status": "ok", "detail": state.winning_persona})
+    if state.streaming_final or state.final_text:
+        logs.append({"step": "compression", "status": "running" if state.streaming_final else "ok", "detail": "polishing final line" if state.streaming_final else "selected line finalized"})
+    return {
+        "route": state.route,
+        "winning_persona": state.winning_persona,
+        "selected": selected_text or state.selected,
+        "final_text": state.final_text or None,
+        "metadata": metadata,
+        "retrieved_scenes": scenes,
+        "candidates": candidates,
+        "active_candidate": (
+            {"persona": state.active_persona, "partial_text": state.active_candidate_text}
+            if state.active_persona and state.active_candidate_text else None
+        ),
+        "streaming_final": state.streaming_final,
+        "logs": logs,
+    }
+
+
 def _compact_reply_html(route: str, selected: str, *, coaching_hint: str = "", selected_char: str = "AI", tts_audio_url: str = "") -> str:
     hint = f'<div class="wg-dim-italic" style="margin-top:.35rem;font-size:.85rem">{_esc(coaching_hint)}</div>' if coaching_hint else ""
     return (
@@ -242,41 +297,14 @@ def _meta_pass1_html(meta) -> str:
 
 
 def _debug_panels_html(result: WitGymResponse) -> str:
-    meta = result.metadata
-    parts = [_meta_pass1_html(meta)]
-
-    for i, scene in enumerate(result.retrieved_scenes, 1):
-        char    = scene.character
-        av_url  = _avatar_url(char)
-        title   = _char_title(char)
-        show    = scene.show or "The Office"
-        # Build onclick that calls the global wgOpenScene function
-        onclick = (
-            f"wgOpenScene({_jstr(char)},{_jstr(show)},{_jstr(scene.setup)},"
-            f"{_jstr(scene.response)},{_jstr(scene.why_it_works)},{_jstr(av_url)},{_jstr(title)})"
-        )
-        parts += [
-            f'<div class="wg-panel wg-panel-blue wg-clickable" onclick="{_esc(onclick)}" '
-            f'title="Click to see {_esc(char)}\'s full scene">',
-            f'<div class="wg-panel-title">Retrieved Scene {i} — {_esc(show)} · click to expand <span class="wg-scene-arrow">↗</span></div>',
-            f'<div><span class="wg-bold">{_esc(char)}</span> <span class="wg-dim">· {_esc(title)}</span></div>',
-            f'<div><span class="wg-dim">Setup:</span> {_esc(scene.setup)}</div>',
-            f'<div><span class="wg-dim">Response:</span> {_esc(scene.response)}</div>',
-            '</div>',
-        ]
-
-    for c in result.candidates:
-        selected = c.text == result.selected
-        cls   = "wg-panel-green" if selected else "wg-panel-dim"
-        title = "✓ Selected candidate" if selected else f"Candidate — {c.persona}"
-        parts += [
-            f'<div class="wg-panel {cls}">',
-            f'<div class="wg-panel-title">{_esc(title)}</div>',
-            f'<div>{_esc(c.text)}</div>',
-            '</div>',
-        ]
-
-    return "".join(parts)
+    trace = _trace_payload_from_result(result)
+    trace_json = json.dumps(trace, indent=2, ensure_ascii=True)
+    return (
+        '<div class="wg-trace-block">'
+        '<div class="wg-trace-title">TRACE JSON</div>'
+        f'<pre class="wg-trace-json">{_esc(trace_json)}</pre>'
+        '</div>'
+    )
 
 
 @dataclass
@@ -344,48 +372,14 @@ def apply_stream_event(state: StreamingTurnState, event: PipelineEvent) -> None:
 def _streaming_debug_panels_html(state: StreamingTurnState, selected_text: str) -> str:
     if state.metadata is None:
         return ""
-    meta = state.metadata
-    parts = [_meta_pass1_html(meta)]
-
-    for i, scene in enumerate(state.scenes, 1):
-        char = scene.character
-        av_url = _avatar_url(char)
-        title = _char_title(char)
-        show = scene.show or "The Office"
-        onclick = (
-            f"wgOpenScene({_jstr(char)},{_jstr(show)},{_jstr(scene.setup)},"
-            f"{_jstr(scene.response)},{_jstr(scene.why_it_works)},{_jstr(av_url)},{_jstr(title)})"
-        )
-        parts += [
-            f'<div class="wg-panel wg-panel-blue wg-clickable" onclick="{_esc(onclick)}" '
-            f'title="Click to see {_esc(char)}\'s full scene">',
-            f'<div class="wg-panel-title">Retrieved Scene {i} — {_esc(show)} · click to expand <span class="wg-scene-arrow">↗</span></div>',
-            f'<div><span class="wg-bold">{_esc(char)}</span> <span class="wg-dim">· {_esc(title)}</span></div>',
-            f'<div><span class="wg-dim">Setup:</span> {_esc(scene.setup)}</div>',
-            f'<div><span class="wg-dim">Response:</span> {_esc(scene.response)}</div>',
-            '</div>',
-        ]
-
-    for c in state.candidates:
-        selected = c.text == selected_text
-        cls = "wg-panel-green" if selected else "wg-panel-dim"
-        title = "✓ Selected candidate" if selected else f"Candidate — {c.persona}"
-        parts += [
-            f'<div class="wg-panel {cls}">',
-            f'<div class="wg-panel-title">{_esc(title)}</div>',
-            f'<div>{_esc(c.text)}</div>',
-            '</div>',
-        ]
-
-    if state.active_persona and state.active_candidate_text:
-        parts += [
-            '<div class="wg-panel wg-panel-dim">',
-            f'<div class="wg-panel-title">Drafting — {_esc(state.active_persona)}</div>',
-            f'<div>{_esc(state.active_candidate_text)}</div>',
-            '</div>',
-        ]
-
-    return "".join(parts)
+    trace = _trace_payload_from_stream(state, selected_text)
+    trace_json = json.dumps(trace, indent=2, ensure_ascii=True)
+    return (
+        '<div class="wg-trace-block">'
+        '<div class="wg-trace-title">TRACE JSON</div>'
+        f'<pre class="wg-trace-json">{_esc(trace_json)}</pre>'
+        '</div>'
+    )
 
 
 def format_streaming_turn_html(state: StreamingTurnState, show_debug: bool = True) -> str:
@@ -457,19 +451,6 @@ def format_streaming_turn_html(state: StreamingTurnState, show_debug: bool = Tru
             '<span>drafting candidates…</span></div>',
         ]
 
-    # ── Process rail SECOND (compact, below hero) ──────────────────────────
-    parts += [
-        _twist_meter_html(state.metadata.twist_potential),
-        '<div class="wg-debug-toggle wg-debug-toggle--new">',
-        '<span class="wg-debug-toggle-line"></span>',
-        f'<span class="wg-debug-toggle-label">Coaching notes <span class="wg-debug-chevron">{chevron}</span></span>',
-        '<span class="wg-debug-toggle-line"></span>',
-        '</div>',
-        f'<div class="wg-debug-body{collapsed_cls}">',
-        _streaming_debug_panels_html(state, state.selected),
-        '</div>',
-    ]
-
     parts.append('<div class="wg-rule"></div></div>')
     return "".join(parts)
 
@@ -496,7 +477,15 @@ def format_transcript_with_streaming(
     )
     if stream_state is not None:
         body += format_streaming_turn_html(stream_state, show_debug=show_debug)
-    return f'<div class="wg-transcript">{body}</div>{_PAGE_JS}'
+    if stream_state is not None and stream_state.metadata is not None:
+        trace_payload = _trace_payload_from_stream(stream_state, stream_state.selected)
+    elif recent:
+        last_result = recent[-1][1] if isinstance(recent[-1][1], WitGymResponse) else WitGymResponse.model_validate(recent[-1][1])
+        trace_payload = _trace_payload_from_result(last_result)
+    else:
+        trace_payload = None
+    trace_attr = _esc(json.dumps(trace_payload, ensure_ascii=True)) if trace_payload else ""
+    return f'<div class="wg-transcript" data-latest-trace="{trace_attr}">{body}</div>{_PAGE_JS}'
 
 
 def _twist_meter_html(twist_potential: int) -> str:
@@ -593,18 +582,6 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
             '</div>'
         )
 
-    # ── Process rail SECOND (expandable coaching notes) ────────────────────
-    parts += [
-        _twist_meter_html(result.metadata.twist_potential),
-        f'<div class="wg-debug-toggle{beckon_cls}">',
-        '<span class="wg-debug-toggle-line"></span>',
-        f'<span class="wg-debug-toggle-label">Coaching notes <span class="wg-debug-chevron">{chevron}</span></span>',
-        '<span class="wg-debug-toggle-line"></span>',
-        '</div>',
-        f'<div class="wg-debug-body{collapsed_cls}">',
-        _debug_panels_html(result),
-        '</div>',
-    ]
     parts.append('<div class="wg-rule"></div></div>')
     return "".join(parts)
 
@@ -632,6 +609,9 @@ def format_transcript_html(
         )
     else:
         recent = traces[-max_turns:]
+        last_trace_payload = _trace_payload_from_result(
+            recent[-1][1] if isinstance(recent[-1][1], WitGymResponse) else WitGymResponse.model_validate(recent[-1][1])
+        )
         body = "".join(
             format_trace_html(
                 r if isinstance(r, WitGymResponse) else WitGymResponse.model_validate(r),
@@ -642,8 +622,10 @@ def format_transcript_html(
             )
             for i, (user_input, r) in enumerate(recent)
         ) + append_html
+        trace_attr = _esc(json.dumps(last_trace_payload, ensure_ascii=True))
+        return f'<div class="wg-transcript" data-latest-trace="{trace_attr}">{body}</div>{_PAGE_JS}'
 
-    return f'<div class="wg-transcript">{body}</div>{_PAGE_JS}'
+    return f'<div class="wg-transcript" data-latest-trace="">{body}</div>{_PAGE_JS}'
 
 
 # Legacy helpers

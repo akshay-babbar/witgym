@@ -368,6 +368,11 @@ body.wg-light-mode footer { display: none !important; }
 #wg-practice .wg-dim   { color: #9e9288 !important; }
 #wg-practice .wg-cyan  { color: #0891b2 !important; }
 #wg-practice .wg-dim-italic { color: #9e9288 !important; font-style: italic; }
+#wg-practice .wg-trace-block {
+  background: #faf9f6 !important; border-color: #e0d8cc !important;
+}
+#wg-practice .wg-trace-title { color: #9e9288 !important; }
+#wg-practice .wg-trace-json { color: #3d3429 !important; }
 #wg-practice .wg-debug-toggle-line   { background: #e0d8cc !important; }
 #wg-practice .wg-debug-toggle-label {
   border-color: #e0d8cc !important; background: #f5f2eb !important; color: #9e9288 !important;
@@ -464,6 +469,21 @@ body.wg-light-mode footer { display: none !important; }
 .wg-thinking-icon { flex-shrink: 0; animation: wg-spin .9s linear infinite; }
 @keyframes wg-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .wg-thinking-icon { animation: none; } }
+@media (max-width: 640px) {
+  #wg-practice #wg-chat-shell .html-container {
+    min-height: 180px !important;
+    max-height: none !important;
+  }
+  #wg-practice .wg-trace-json {
+    font-size: 0.72rem;
+    line-height: 1.45;
+  }
+  #wg-practice .wg-reply-actions {
+    top: 0.4rem;
+    right: 0.45rem;
+    gap: 0.35rem;
+  }
+}
 
 .wg-coach-reply {
   margin-top: 0.85rem; padding: 0.9rem 1.1rem;
@@ -513,6 +533,20 @@ body.wg-light-mode footer { display: none !important; }
 .wg-panel-title {
   font-family: 'Bebas Neue', sans-serif; font-size: 0.82rem;
   letter-spacing: 0.08em; margin-bottom: 0.35rem;
+}
+.wg-trace-block {
+  border-radius: 10px; padding: 0.75rem 0.9rem;
+  margin: 0.35rem 0; border: 1px solid var(--wg-border);
+  background: var(--wg-surf2);
+}
+.wg-trace-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.82rem;
+  letter-spacing: 0.14em; color: var(--wg-muted); margin-bottom: 0.45rem;
+}
+.wg-trace-json {
+  margin: 0; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8rem; line-height: 1.55; color: var(--wg-white);
 }
 /* Clickable chips */
 .wg-chip-clickable {
@@ -1094,6 +1128,95 @@ body.wg-light-mode footer { display: none !important; }
   65% { transform: translateY(1px) scale(0.99); }
 }
 
+/* ── Dedicated trace launcher + modal post-mortem ───────────────────────── */
+.wg-trace-launch-wrap {
+  display: flex; justify-content: flex-start; margin-top: 0.75rem;
+}
+.wg-trace-launch {
+  display: inline-flex; align-items: center; gap: 0.55rem;
+  border: 1.5px solid rgba(180,83,9,0.34);
+  background: linear-gradient(180deg, rgba(255,250,241,0.95), rgba(245,240,232,0.98));
+  color: #b45309; border-radius: 999px;
+  padding: 0.55rem 0.95rem; cursor: pointer;
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.88rem; letter-spacing: 0.12em;
+  box-shadow: 0 8px 24px rgba(180,83,9,0.08);
+  transition: transform .15s, box-shadow .15s, border-color .15s, color .15s;
+}
+.wg-trace-launch:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(180,83,9,0.13);
+  border-color: rgba(180,83,9,0.55);
+  color: #92400e;
+}
+.wg-trace-launch-icon {
+  width: 1.9rem; height: 1.9rem; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.95), rgba(255,241,220,0.92) 42%, rgba(255,231,189,0.88));
+  border: 1px solid rgba(180,83,9,0.2);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.65), 0 4px 14px rgba(180,83,9,0.14);
+}
+.wg-trace-launch-icon svg {
+  width: 1.08rem; height: 1.08rem; display: block;
+}
+.wg-trace-launch-text {
+  display: inline-flex; align-items: center;
+}
+
+.wg-trace-modal-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  margin-bottom: 1rem; padding-bottom: 0.8rem; border-bottom: 2px solid #e0d8cc;
+}
+.wg-trace-modal-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 1.05rem; letter-spacing: 0.18em;
+  color: #2d6a4f !important;
+}
+.wg-trace-modal-sub {
+  color: #9e9288 !important; font-size: 0.92rem; font-style: italic;
+}
+.wg-trace-summary {
+  display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 1rem;
+}
+.wg-trace-pill {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.28rem 0.62rem; border-radius: 999px;
+  border: 1px solid #e0d8cc; background: #fff; color: #3d3429 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.76rem;
+}
+.wg-trace-logbox {
+  background: #171717; color: #f5f0e8; border-radius: 14px;
+  padding: 0.9rem 1rem; margin-bottom: 1rem;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05);
+}
+.wg-trace-logtitle {
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.82rem; letter-spacing: 0.16em;
+  color: #f5c518 !important; margin-bottom: 0.55rem;
+}
+.wg-trace-logline {
+  display: grid; grid-template-columns: 118px 64px 1fr; gap: 0.7rem;
+  padding: 0.24rem 0; align-items: start;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem; line-height: 1.45;
+}
+.wg-trace-step { color: #93c5fd !important; }
+.wg-trace-status { color: #86efac !important; text-transform: uppercase; }
+.wg-trace-detail { color: #f5f0e8 !important; opacity: 0.92; }
+.wg-trace-jsonbox {
+  background: #faf9f6; border: 1px solid #e0d8cc; border-radius: 14px;
+  overflow: hidden;
+}
+.wg-trace-jsonhead {
+  font-family: 'Bebas Neue', sans-serif; font-size: 0.82rem; letter-spacing: 0.15em;
+  color: #9e9288 !important; padding: 0.75rem 0.95rem; border-bottom: 1px solid #e0d8cc;
+  background: rgba(255,255,255,0.7);
+}
+.wg-trace-jsonpre {
+  margin: 0; padding: 0.95rem 1rem 1.1rem; max-height: 48vh; overflow: auto;
+  white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem; line-height: 1.55; color: #3d3429 !important;
+}
+
 /* ── Hidden char state textbox ───────────────────────────────────────────── */
 #wg-char-hidden { position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none; }
 
@@ -1302,6 +1425,60 @@ window.wgDrill = function(text) {
 window.wgClose = function() {
   var o = document.getElementById('wg-modal-overlay');
   if (o) o.style.display = 'none';
+};
+window.wgOpenLatestTrace = function() {
+  var transcript = document.querySelector('.wg-transcript');
+  var raw = transcript && transcript.dataset ? transcript.dataset.latestTrace : '';
+  var o = document.getElementById('wg-modal-overlay');
+  var b = document.getElementById('wg-modal-body');
+  if (!o || !b) return;
+  if (!raw) {
+    b.innerHTML =
+      '<div class="wg-trace-modal-head">' +
+      '<div><div class="wg-trace-modal-title">POST-MORTEM TRACE</div><div class="wg-trace-modal-sub">Run a turn first, then open the trace.</div></div>' +
+      '</div>';
+    o.style.display = 'flex';
+    return;
+  }
+  try {
+    var payload = JSON.parse(raw);
+    var logs = Array.isArray(payload.logs) ? payload.logs : [];
+    var summary = [
+      ['route', payload.route || 'quick_wit'],
+      ['winner', payload.winning_persona || 'n/a'],
+      ['twist', payload.metadata && payload.metadata.twist_potential != null ? String(payload.metadata.twist_potential) : 'n/a'],
+      ['scenes', String((payload.retrieved_scenes || []).length)],
+      ['candidates', String((payload.candidates || []).length)]
+    ];
+    var summaryHtml = summary.map(function(item) {
+      return '<span class="wg-trace-pill"><strong>' + item[0] + '</strong> ' + item[1] + '</span>';
+    }).join('');
+    var logHtml = logs.length ? logs.map(function(line) {
+      return '<div class="wg-trace-logline">' +
+        '<span class="wg-trace-step">' + (line.step || '') + '</span>' +
+        '<span class="wg-trace-status">' + (line.status || '') + '</span>' +
+        '<span class="wg-trace-detail">' + (line.detail || '') + '</span>' +
+      '</div>';
+    }).join('') : '<div class="wg-trace-logline"><span class="wg-trace-step">trace</span><span class="wg-trace-status">info</span><span class="wg-trace-detail">No execution log recorded for this turn.</span></div>';
+    var jsonPretty = JSON.stringify(payload, null, 2)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    b.innerHTML =
+      '<div class="wg-trace-modal-head">' +
+        '<div><div class="wg-trace-modal-title">POST-MORTEM TRACE</div><div class="wg-trace-modal-sub">Pretty JSON + execution log for the latest turn.</div></div>' +
+      '</div>' +
+      '<div class="wg-trace-summary">' + summaryHtml + '</div>' +
+      '<div class="wg-trace-logbox"><div class="wg-trace-logtitle">EXECUTION LOG</div>' + logHtml + '</div>' +
+      '<div class="wg-trace-jsonbox"><div class="wg-trace-jsonhead">TRACE JSON</div><pre class="wg-trace-jsonpre">' + jsonPretty + '</pre></div>';
+    o.style.display = 'flex';
+  } catch (e) {
+    b.innerHTML =
+      '<div class="wg-trace-modal-head">' +
+      '<div><div class="wg-trace-modal-title">POST-MORTEM TRACE</div><div class="wg-trace-modal-sub">Trace payload could not be decoded.</div></div>' +
+      '</div>';
+    o.style.display = 'flex';
+  }
 };
 window.wgOpenChip = function(title, definition) {
   var o = document.getElementById('wg-modal-overlay');
@@ -2234,6 +2411,20 @@ def build_ui():
                                     elem_id="wg-submit-btn",
                                 )
                                 clear_btn = gr.Button("Start over →", size="sm", variant="secondary", scale=1)
+                            gr.HTML(
+                                '<div class="wg-trace-launch-wrap">'
+                                '<button class="wg-trace-launch" onclick="wgOpenLatestTrace()" type="button">'
+                                '<span class="wg-trace-launch-icon" aria-hidden="true">'
+                                '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">'
+                                '<path d="M6.5 7.5h4M6.5 12h6M6.5 16.5h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>'
+                                '<rect x="4" y="4.5" width="11" height="15" rx="2.5" stroke="currentColor" stroke-width="1.7"/>'
+                                '<path d="M16.5 8.5l1.4-1.4 2.5 2.5-1.4 1.4M15.7 9.3l2.5 2.5M15.2 14.8l3.6-3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'
+                                '</svg>'
+                                '</span>'
+                                '<span class="wg-trace-launch-text">Open Trace</span>'
+                                '</button>'
+                                '</div>'
+                            )
 
 
                     with gr.Column(scale=1, elem_id="wg-sidebar"):

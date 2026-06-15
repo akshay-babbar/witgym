@@ -164,11 +164,10 @@ sequenceDiagram
 
 The practice screen is situation-first: you paste or pick a starter, then receive a streaming coach reply. The landing **coaching panel** shows Office character bios (tap for a popup) — reference flavor, not a character picker.
 
-The debug trace uses **progressive disclosure** — full pipeline output is computed, but revealed in layers:
+The trace uses **progressive disclosure** — the reply stays front-and-center, while the expandable rail reveals the underlying structured pipeline as JSON:
 
-- **Chips** (STATUS ASSERTION, STATUS THREAT, MODERATE) — tap to get a one-line definition of what that label means
-- **Capsules** (SUBTEXT, POWER DYNAMIC) — tap to expand the actual analysis of your situation
-- **Coaching notes** — expandable panel with the structural explanation of why the response works
+- **Trace** — expandable JSON payload with metadata, retrieved scenes, candidates, and selected output
+- **Chips / capsules** — used only where the product needs human-facing explanation, not as a substitute for the execution trace
 
 New elements animate in with a shimmer sweep + border glow system that stops on first interaction. This mirrors how Notion and Apple iOS handle progressive discovery — purposeful discoverability signaling, not decoration.
 
