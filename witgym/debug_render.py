@@ -119,8 +119,12 @@ def _voice_gender(selected_char: str) -> str:
     return "neutral"
 
 
-def _allow_browser_voice(selected_char: str) -> str:
-    return "true"  # always allow browser TTS fallback for old turns that lost Kokoro audio
+def _tts_attrs(tts_audio_url: str) -> str:
+    """Return HTML attribute string for TTS state."""
+    from witgym.tts import TTS_LOADING
+    if tts_audio_url == TTS_LOADING:
+        return 'data-tts-loading="true" data-audio=""'
+    return f'data-audio="{_esc(tts_audio_url or "")}"'
 
 
 def _reply_actions_html() -> str:
@@ -203,8 +207,7 @@ def _compact_reply_html(route: str, selected: str, *, coaching_hint: str = "", s
         f'<div class="wg-coach-reply wg-coach-reply--compact" '
         f'data-char="{_esc(selected_char or "AI")}" '
         f'data-voice-gender="{_voice_gender(selected_char or "AI")}" '
-        f'data-allow-browser-voice="{_allow_browser_voice(selected_char or "AI")}" '
-        f'data-audio="{_esc(tts_audio_url or "")}">'
+        f'{_tts_attrs(tts_audio_url or "")}>'
         f'{_reply_actions_html()}'
         f'{_coach_header_html(selected_char)}'
         f'<div class="wg-coach-reply-body">{_esc(selected)}</div>'
@@ -611,8 +614,7 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
             f'<div class="wg-coach-reply{new_cls}" data-alts="{alts_json}" data-alt-idx="0" '
             f'data-char="{_esc(selected_char or "AI")}" '
             f'data-voice-gender="{_voice_gender(selected_char or "AI")}" '
-            f'data-allow-browser-voice="{_allow_browser_voice(selected_char or "AI")}" '
-            f'data-audio="{_esc(result.tts_audio_url or "")}">'
+            f'{_tts_attrs(result.tts_audio_url or "")}>'
         ),
         f'{_reply_actions_html()}',
         coach_hdr,
