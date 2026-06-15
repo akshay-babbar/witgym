@@ -1820,6 +1820,20 @@ window.wgCopy = function(btn) {
   }
 };
 
+window.wgShowToast = function(msg) {
+  var el = document.getElementById('wg-tts-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'wg-tts-toast';
+    el.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:.6rem 1.2rem;border-radius:.5rem;font-size:.9rem;z-index:9999;pointer-events:none;opacity:0;transition:opacity .2s';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(window._wgToastTimer);
+  window._wgToastTimer = setTimeout(function() { el.style.opacity = '0'; }, 2500);
+};
+
 window.wgStopSpeaking = function() {
   if (window._wgAudioPlayer) {
     try {
@@ -1953,24 +1967,10 @@ window.wgSpeak = function(btn) {
     } catch (e) {}
   }
 
-  if (reply.dataset.allowBrowserVoice !== 'true') return;
-
-  if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
-  var profile = window.wgVoiceProfile(reply.dataset.char || 'AI');
-  var utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = profile.rate;
-  utterance.pitch = profile.pitch;
-  utterance.voice = window.wgPickVoice(profile, reply);
-  utterance.onstart = function() {
-    window._wgSpeakingBtn = btn;
-    window._wgSpeakingReply = reply;
-    btn.classList.add('wg-speaking');
-    window.wgSetActionIcon(btn, 'stop');
-    reply.classList.add('wg-speaking');
-  };
-  utterance.onend = window.wgStopSpeaking;
-  utterance.onerror = window.wgStopSpeaking;
-  window.speechSynthesis.speak(utterance);
+  if (reply.dataset.ttsLoading === 'true') {
+    window.wgShowToast('Voice is loading… try again in a moment.');
+    return;
+  }
 };
 
 try {
@@ -2145,8 +2145,7 @@ def _bg_warmup():
     global _warmup_error
     try:
         _get_shared()
-        from witgym.tts import _get_pipeline
-        _get_pipeline()  # pre-warm Kokoro so first TTS call isn't slow
+        pass  # TTS warms up on first use via HF Inference API
     except Exception as e:
         logger.exception("Background warmup failed")
         _warmup_error = _format_warmup_error(e)
