@@ -1832,8 +1832,6 @@ window.wgPickVoice = function(profile, reply) {
     });
     if (fallbackMatch) return fallbackMatch;
   }
-  var gender = (reply && reply.dataset && reply.dataset.voiceGender) || profile.gender || 'neutral';
-  if (gender !== 'neutral') return null;
   return voices.find(function(voice) { return /^en(-|_)/i.test(voice.lang || ''); }) || voices[0];
 };
 
@@ -1885,9 +1883,6 @@ window.wgSpeak = function(btn) {
   utterance.rate = profile.rate;
   utterance.pitch = profile.pitch;
   utterance.voice = window.wgPickVoice(profile, reply);
-  if (!utterance.voice && profile.gender !== 'neutral') {
-    return;
-  }
   utterance.onstart = function() {
     window._wgSpeakingBtn = btn;
     window._wgSpeakingReply = reply;
