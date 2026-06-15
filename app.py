@@ -1894,6 +1894,8 @@ def _bg_warmup():
     global _warmup_error
     try:
         _get_shared()
+        from witgym.tts import _get_pipeline
+        _get_pipeline()  # pre-warm Kokoro so first TTS call isn't slow
     except Exception as e:
         logger.exception("Background warmup failed")
         _warmup_error = _format_warmup_error(e)
