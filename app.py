@@ -828,8 +828,9 @@ body.wg-light-mode footer { display: none !important; }
 .wg-persona-label {
   font-style: italic; font-family: 'EB Garamond', serif;
   font-size: 0.78rem; color: var(--wg-yellow); letter-spacing: 0;
-  font-weight: 400; background: transparent; border: none;
-  padding: 0; cursor: pointer;
+  font-weight: 400; background: transparent !important; border: none !important;
+  padding: 0 !important; cursor: pointer; box-shadow: none !important;
+  display: inline; vertical-align: baseline;
 }
 #wg-practice .wg-persona-label { color: #b45309 !important; }
 .wg-insight-strip {
@@ -1347,6 +1348,28 @@ body.wg-light-mode footer { display: none !important; }
 # All three functions use a SINGLE modal (#wg-modal-overlay) at top DOM level
 # so it's never hidden by a parent column's display:none.
 _GLOBAL_JS = """
+/* Persona chip — event delegation so Gradio SSR doesn't strip onclick */
+document.addEventListener('click', function(e) {
+  var lbl = e.target.closest('.wg-persona-label');
+  if (!lbl) return;
+  var persona = (lbl.dataset.persona || lbl.textContent || '').trim().toLowerCase();
+  var defs = {
+    cynic:      ["PERSONA · CYNIC",      "This lens says the quiet part out loud. It spots the real motive, the hidden cost, or the ugly truth underneath the situation."],
+    conviction: ["PERSONA · CONVICTION", "This lens commits completely to a wrong belief. It is funny because the certainty exposes something true about the speaker."],
+    absurdist:  ["PERSONA · ABSURDIST",  "This lens follows the situation’s logic farther than a normal person would. It makes the joke by treating the spiral as perfectly reasonable."],
+    bisociate:  ["PERSONA · BISOCIATE",  "This lens jumps to a different but structurally matching world. It works when the same comic pattern suddenly shows up somewhere unexpected."],
+  };
+  var d = defs[persona] || ['PERSONA', 'This is the comic lens the coach used to write the line.'];
+  if (typeof wgOpenChip === 'function') wgOpenChip(d[0], d[1]);
+});
+
+/* Comedy Notes button — event delegation (Gradio SSR may strip inline onclick) */
+document.addEventListener('click', function(e) {
+  if (e.target.closest('.wg-trace-launch')) {
+    if (typeof wgOpenLatestTrace === 'function') wgOpenLatestTrace();
+  }
+});
+
 /* Event delegation for debug toggle (dynamic elements) */
 document.addEventListener('click', function(e) {
   var toggle = e.target.closest('.wg-debug-toggle');
@@ -1387,7 +1410,7 @@ window.wgAnotherTake = function(btn) {
     var body = card.querySelector('.wg-coach-reply-body');
     var lbl = card.querySelector('.wg-persona-label');
     if (body) body.textContent = alt.text;
-    if (lbl) lbl.textContent = alt.persona;
+    if (lbl) { lbl.textContent = alt.persona; lbl.dataset.persona = alt.persona; }
     card.dataset.altIdx = (idx + 1) % alts.length;
     card.classList.add('wg-coach-reply--alt');
     setTimeout(function(){ card.classList.remove('wg-coach-reply--alt'); }, 400);
@@ -2319,7 +2342,7 @@ def build_ui():
                                 clear_btn = gr.Button("Start over →", size="sm", variant="secondary", scale=1)
                             gr.HTML(
                                 '<div class="wg-trace-launch-wrap">'
-                                '<button class="wg-trace-launch" onclick="wgOpenLatestTrace()" type="button">'
+                                '<button class="wg-trace-launch" type="button">'
                                 '<span class="wg-trace-launch-icon" aria-hidden="true">'
                                 '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">'
                                 '<path d="M6.5 7.5h4M6.5 12h6M6.5 16.5h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>'
