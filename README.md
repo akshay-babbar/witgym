@@ -99,7 +99,7 @@ sequenceDiagram
 ```
 
 ### Evidence / badges
-- **Sharing is Caring** (`achievement:sharing`): [public pipeline traces](data/public_traces.jsonl) — sanitized JSONL (metadata, scene IDs, candidate stats, execution log; no Office dialogue text). Regenerate with `uv run python scripts/export_public_traces.py`.
+- **Sharing is Caring** (`achievement:sharing`): [public pipeline traces](https://github.com/akshay-babbar/witgym/blob/main/data/public_traces.jsonl) — sanitized JSONL (metadata, scene IDs, candidate stats, execution log; no Office dialogue text). Regenerate with `uv run python scripts/export_public_traces.py`.
 - **Field Notes** (`achievement:fieldnotes`): [docs/field-notes.md](docs/field-notes.md).
 - **Off‑Brand UI** (`achievement:offbrand`): custom Gradio UI + streaming trace disclosure.
 
