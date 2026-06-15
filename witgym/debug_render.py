@@ -52,22 +52,29 @@ def _fmt_chip(value: str) -> str:
 # Succinct definitions for each comedy structural property — shown on chip click
 _CHIP_DEFS: dict[str, tuple[str, str]] = {
     # Archetypes
-    "status_assertion":   ("STATUS ASSERTION",     "Who's in charge here? Comedy exploits the gap between perceived and actual authority."),
-    "self_delusion":      ("SELF-DELUSION",         "The speaker's internal narrative and external reality are on different planets. Exposure is inevitable."),
-    "power_inversion":    ("POWER INVERSION",       "Expected hierarchy flips. The person who should win, loses — and the reversal is the joke."),
-    "anxiety_escalation": ("ANXIETY ESCALATION",    "A small worry snowballs into catastrophe in real time. Comedy lives in watching the spiral."),
-    "social_fail":        ("SOCIAL PERFORMANCE FAIL", "The attempt to appear normal backfires. The harder the try, the bigger the collapse."),
-    "misplaced_conf":     ("MISPLACED CONFIDENCE",  "Maximum certainty, zero basis for it. The most dangerous form of comedy."),
+    "status_assertion":   ("ARCHETYPE · STATUS ASSERTION", "What it is: someone is trying to claim authority, status, or competence. Why it matters: the joke works by exposing the gap between the claim and the reality."),
+    "self_delusion":      ("ARCHETYPE · SELF-DELUSION", "What it is: someone believes a flattering story about themselves that reality cannot support. Why it matters: comedy lands when the fantasy finally runs into the facts."),
+    "power_inversion":    ("ARCHETYPE · POWER INVERSION", "What it is: the expected pecking order flips. Why it matters: surprise grows when the person who should control the room suddenly loses it."),
+    "anxiety_escalation": ("ARCHETYPE · ANXIETY ESCALATION", "What it is: a small worry spirals into a full disaster movie. Why it matters: the joke gets sharper as the reaction becomes bigger than the actual problem."),
+    "social_fail":        ("ARCHETYPE · SOCIAL PERFORMANCE FAIL", "What it is: someone tries to look normal, smooth, or impressive and fumbles it. Why it matters: comedy comes from watching the performance collapse in public."),
+    "misplaced_conf":     ("ARCHETYPE · MISPLACED CONFIDENCE", "What it is: someone sounds certain without having the facts. Why it matters: the joke exposes confidence that has outrun competence."),
     # Tensions
-    "social_embarrass":   ("SOCIAL EMBARRASSMENT",  "The gap between how you want to appear and how you actually appear. Everyone sees it except you."),
-    "existential":        ("EXISTENTIAL ANXIETY",   "The joke touches something deeper — identity, mortality, meaning. The laugh is a release valve."),
-    "status_threat":      ("STATUS THREAT",         "Someone's rank or belonging is under attack. Comedy exploits the gap between deserved and claimed status."),
-    "identity_expose":    ("IDENTITY EXPOSURE",     "A mask slips. What someone really is gets revealed against their will. Truth was always funnier."),
-    "logic_collapse":     ("LOGIC COLLAPSE",        "A belief or argument implodes under its own internal contradictions. Comedy as structural failure."),
+    "social_embarrass":   ("TENSION · SOCIAL EMBARRASSMENT", "What it is: the fear of looking foolish in front of other people. Why it matters: embarrassment raises the emotional stakes, so even a short line can hit hard."),
+    "existential":        ("TENSION · EXISTENTIAL ANXIETY", "What it is: the moment quietly touches identity, meaning, or dread. Why it matters: deeper fear gives the joke weight instead of making it feel throwaway."),
+    "status_threat":      ("TENSION · STATUS THREAT", "What it is: someone's rank, credibility, or belonging feels under pressure. Why it matters: status danger creates friction, and friction gives the line bite."),
+    "identity_expose":    ("TENSION · IDENTITY EXPOSURE", "What it is: the person's mask is slipping. Why it matters: jokes get stronger when they reveal the truth the speaker was trying to hide."),
+    "logic_collapse":     ("TENSION · LOGIC COLLAPSE", "What it is: the person's explanation breaks under its own rules. Why it matters: once the logic collapses, the line can simply point at the wreckage."),
     # Distances
-    "mild":               ("MILD VIOLATION",        "Gentle subversion. Safe for a work meeting. The laugh is a small, polite exhale."),
-    "moderate":           ("MODERATE VIOLATION",    "Has an edge. Makes the room slightly uncomfortable in a productive way. The sweet spot."),
-    "sharp":              ("SHARP VIOLATION",       "Cuts deep. The kind of line that makes people go quiet, then laugh harder than expected."),
+    "mild":               ("SHARPNESS · MILD VIOLATION", "What it is: a safe, lightly subversive joke. Why it matters: this keeps the line playful instead of confrontational."),
+    "moderate":           ("SHARPNESS · MODERATE VIOLATION", "What it is: a joke with some edge, but still recoverable. Why it matters: this is often the sweet spot for sounding bold without losing the room."),
+    "sharp":              ("SHARPNESS · SHARP VIOLATION", "What it is: a line that cuts close to the bone. Why it matters: sharper jokes can win bigger laughs, but they also raise the risk of silence."),
+}
+
+_PERSONA_DEFS: dict[str, tuple[str, str]] = {
+    "cynic": ("PERSONA · CYNIC", "This lens says the quiet part out loud. It spots the real motive, the hidden cost, or the ugly truth underneath the situation."),
+    "conviction": ("PERSONA · CONVICTION", "This lens commits completely to a wrong belief. It is funny because the certainty exposes something true about the speaker."),
+    "absurdist": ("PERSONA · ABSURDIST", "This lens follows the situation's logic farther than a normal person would. It makes the joke by treating the spiral as perfectly reasonable."),
+    "bisociate": ("PERSONA · BISOCIATE", "This lens jumps to a different but structurally matching world. It works when the same comic pattern suddenly shows up somewhere unexpected."),
 }
 
 
@@ -258,6 +265,46 @@ def thinking_turn_html(user_input: str) -> str:
 def _chip_onclick(value: str) -> str:
     title, defn = _CHIP_DEFS.get(value, (_fmt_chip(value), "A comedy structural property."))
     return f"wgOpenChip({_jstr(title)},{_jstr(defn)})"
+
+
+def _persona_onclick(value: str) -> str:
+    title, defn = _PERSONA_DEFS.get(value, (f"PERSONA · {_fmt_chip(value)}", "This is the comic lens the coach used to write the line."))
+    return f"wgOpenChip({_jstr(title)},{_jstr(defn)})"
+
+
+def _insight_button(label: str, onclick: str) -> str:
+    return (
+        f'<button class="wg-insight-btn" type="button" onclick="{_esc(onclick)}">'
+        f'{_esc(label)}'
+        '</button>'
+    )
+
+
+def _coach_notes_html(result: WitGymResponse) -> str:
+    meta = result.metadata
+    buttons = [
+        _insight_button("situation pattern", _chip_onclick(meta.archetype.value)),
+        _insight_button("social pressure", _chip_onclick(meta.tension_type.value)),
+        _insight_button(
+            f"complexity {meta.twist_potential}/10",
+            f"wgOpenChip({_jstr('COMEDY COMPLEXITY')},{_jstr('What it is: how many moving parts this moment has. Why it matters: lower scores usually want one clean observation, while higher scores can support a twistier line.')})",
+        ),
+        _insight_button(
+            f"retrieved context · {len(result.retrieved_scenes)}",
+            f"wgOpenChip({_jstr('RETRIEVED CONTEXT')},{_jstr('These are Office scenes with a similar comedy pattern. They are reference cases for how the joke works, not lines the coach is copying.')})",
+        ),
+    ]
+    if result.winning_persona:
+        buttons.append(_insight_button("persona lens", _persona_onclick(result.winning_persona)))
+    return (
+        '<div class="wg-insight-strip">'
+        '<div class="wg-insight-title">How WitGym built this line</div>'
+        '<div class="wg-insight-sub">Tap any note for a quick explanation.</div>'
+        '<div class="wg-insight-buttons">'
+        + "".join(buttons) +
+        '</div>'
+        '</div>'
+    )
 
 
 def _meta_pass1_html(meta) -> str:
@@ -534,7 +581,10 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
 
     # Winning persona label — use pre-compression value stored in response
     winning_persona = result.winning_persona
-    persona_label = f' · <em class="wg-persona-label">{_esc(winning_persona)}</em>' if winning_persona else ""
+    persona_label = (
+        f' · <button class="wg-persona-label" type="button" onclick="{_esc(_persona_onclick(winning_persona))}">{_esc(winning_persona)}</button>'
+        if winning_persona else ""
+    )
 
     # Another take button (only if alternatives exist)
     another_take_btn = (
@@ -571,6 +621,7 @@ def format_trace_html(result: WitGymResponse, user_input: str, show_debug: bool 
     ]
     if result.explanation:
         parts.append(_explanation_panel_html(result.explanation))
+    parts.append(_coach_notes_html(result))
 
     # ── Drill chips (coaching follow-ups) ──────────────────────────────────
     if is_last:

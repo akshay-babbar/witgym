@@ -829,9 +829,54 @@ body.wg-light-mode footer { display: none !important; }
 .wg-persona-label {
   font-style: italic; font-family: 'EB Garamond', serif;
   font-size: 0.78rem; color: var(--wg-yellow); letter-spacing: 0;
-  font-weight: 400;
+  font-weight: 400; background: transparent; border: none;
+  padding: 0; cursor: pointer;
 }
 #wg-practice .wg-persona-label { color: #b45309 !important; }
+.wg-insight-strip {
+  margin-top: 0.85rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,250,241,0.98), rgba(245,240,232,0.98));
+  border: 1px solid rgba(180,83,9,0.16);
+}
+.wg-insight-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  color: #92400e !important;
+}
+.wg-insight-sub {
+  margin-top: 0.2rem;
+  font-size: 0.88rem;
+  color: #6b6258 !important;
+}
+.wg-insight-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+}
+.wg-insight-btn {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background: #fffaf1 !important;
+  border: 1px solid rgba(180,83,9,0.22) !important;
+  color: #9a3412 !important;
+  border-radius: 999px !important;
+  padding: 0.42rem 0.72rem !important;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.09em;
+  cursor: pointer;
+  line-height: 1;
+  box-shadow: none !important;
+}
+.wg-insight-btn:hover {
+  background: #ffffff !important;
+  border-color: rgba(180,83,9,0.42) !important;
+  transform: translateY(-1px);
+}
 
 .wg-another-take {
   float: right; cursor: pointer; font-family: 'EB Garamond', serif;
@@ -959,6 +1004,13 @@ body.wg-light-mode footer { display: none !important; }
   font-size: 1.05rem; color: #3d3429 !important; line-height: 1.6; font-style: italic;
   background: #f5f0e6; border-left: 3px solid #2d6a4f;
   padding: 0.75rem 1rem; border-radius: 0 10px 10px 0;
+}
+.wg-pop-minihead {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  color: #2563eb !important;
+  margin: 0.9rem 0 0.35rem;
 }
 
 /* ── Arcade Character Selector ─────────────────────────────────────────────── */
@@ -1442,17 +1494,38 @@ window.wgOpenLatestTrace = function() {
   }
   try {
     var payload = JSON.parse(raw);
+    var meta = payload.metadata || {};
     var logs = Array.isArray(payload.logs) ? payload.logs : [];
     var summary = [
       ['route', payload.route || 'quick_wit'],
       ['winner', payload.winning_persona || 'n/a'],
-      ['twist', payload.metadata && payload.metadata.twist_potential != null ? String(payload.metadata.twist_potential) : 'n/a'],
+      ['twist', meta.twist_potential != null ? String(meta.twist_potential) : 'n/a'],
       ['scenes', String((payload.retrieved_scenes || []).length)],
       ['candidates', String((payload.candidates || []).length)]
     ];
+    function fmt(value) {
+      return String(value || '').replace(/_/g, ' ');
+    }
+    function title(value) {
+      return fmt(value).toUpperCase();
+    }
     var summaryHtml = summary.map(function(item) {
       return '<span class="wg-trace-pill"><strong>' + item[0] + '</strong> ' + item[1] + '</span>';
     }).join('');
+    var conceptHtml = '<div class="wg-pop-show">HOW WITGYM READ THIS MOMENT</div>'
+      + '<div class="wg-pop-bio" style="font-style:normal">'
+      + 'This is the teaching layer behind the joke: what kind of situation this is, what pressure drives it, which precedent scenes matched it, and which comic lens shaped the line.'
+      + '</div>'
+      + '<div class="wg-pop-minihead">SITUATION PATTERN</div>'
+      + '<div class="wg-pop-bio" style="font-style:normal">' + title(meta.archetype || 'unknown') + '</div>'
+      + '<div class="wg-pop-minihead">SOCIAL PRESSURE</div>'
+      + '<div class="wg-pop-bio" style="font-style:normal">' + title(meta.tension_type || 'unknown') + '</div>'
+      + '<div class="wg-pop-minihead">COMEDY COMPLEXITY</div>'
+      + '<div class="wg-pop-bio" style="font-style:normal">' + (meta.twist_potential != null ? String(meta.twist_potential) + '/10' : 'n/a') + ' · Higher means more moving parts to play with.</div>'
+      + '<div class="wg-pop-minihead">PERSONA LENS</div>'
+      + '<div class="wg-pop-bio" style="font-style:normal">' + title(payload.winning_persona || 'n/a') + ' · The comic angle used for the final line.</div>'
+      + '<div class="wg-pop-minihead">RETRIEVED CONTEXT</div>'
+      + '<div class="wg-pop-bio" style="font-style:normal">' + String((payload.retrieved_scenes || []).length) + ' Office scene(s) matched this pattern. They are reference cases, not lines being copied.</div>';
     var logHtml = logs.length ? logs.map(function(line) {
       return '<div class="wg-trace-logline">' +
         '<span class="wg-trace-step">' + (line.step || '') + '</span>' +
@@ -1466,9 +1539,10 @@ window.wgOpenLatestTrace = function() {
       .replace(/>/g, '&gt;');
     b.innerHTML =
       '<div class="wg-trace-modal-head">' +
-        '<div><div class="wg-trace-modal-title">POST-MORTEM TRACE</div><div class="wg-trace-modal-sub">Pretty JSON + execution log for the latest turn.</div></div>' +
+        '<div><div class="wg-trace-modal-title">HOW WITGYM BUILT THIS</div><div class="wg-trace-modal-sub">Student-friendly notes first, raw trace second.</div></div>' +
       '</div>' +
       '<div class="wg-trace-summary">' + summaryHtml + '</div>' +
+      conceptHtml +
       '<div class="wg-trace-logbox"><div class="wg-trace-logtitle">EXECUTION LOG</div>' + logHtml + '</div>' +
       '<div class="wg-trace-jsonbox"><div class="wg-trace-jsonhead">TRACE JSON</div><pre class="wg-trace-jsonpre">' + jsonPretty + '</pre></div>';
     o.style.display = 'flex';
@@ -1519,6 +1593,10 @@ window.wgOpenScene = function(character, show, setup, response, why, avatarUrl, 
     + '<div class="wg-pop-setup">&ldquo;' + setup + '&rdquo;</div>'
     + '<div class="wg-pop-bubble">' + response + '</div>'
     + '</div></div>'
+    + '<div class="wg-pop-why">'
+    + '<div class="wg-pop-why-title">WHY THIS SCENE WAS RETRIEVED</div>'
+    + '<div class="wg-pop-why-body">This is a reference case with a similar comedy pattern, so the coach can borrow the mechanism without copying the line.</div>'
+    + '</div>'
     + '<div class="wg-pop-why">'
     + '<div class="wg-pop-why-title">WHY IT WORKS</div>'
     + '<div class="wg-pop-why-body">' + why + '</div>'
@@ -2417,7 +2495,7 @@ def build_ui():
                                 '<path d="M16.5 8.5l1.4-1.4 2.5 2.5-1.4 1.4M15.7 9.3l2.5 2.5M15.2 14.8l3.6-3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'
                                 '</svg>'
                                 '</span>'
-                                '<span class="wg-trace-launch-text">Open Trace</span>'
+                                '<span class="wg-trace-launch-text">Comedy Notes</span>'
                                 '</button>'
                                 '</div>'
                             )
