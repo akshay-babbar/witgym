@@ -2452,12 +2452,12 @@ def build_ui():
             outputs=[landing_col, practice_col, session_state],
             queue=False,
             js=(
-                "() => {"
+                "(char, sess) => {"
                 "  document.body.classList.add('wg-light-mode');"
                 "  wgPlayBell && wgPlayBell();"
                 "  setTimeout(function(){ wgUpdateCoachHeader && wgUpdateCoachHeader(); }, 80);"
                 "  setTimeout(function(){ wgInitFlicker && wgInitFlicker(); wgInitRoasts && wgInitRoasts(); }, 150);"
-                "  return [];"
+                "  return [char, sess];"
                 "}"
             ),
         )

@@ -609,9 +609,13 @@ def format_transcript_html(
         )
     else:
         recent = traces[-max_turns:]
-        last_trace_payload = _trace_payload_from_result(
-            recent[-1][1] if isinstance(recent[-1][1], WitGymResponse) else WitGymResponse.model_validate(recent[-1][1])
-        )
+        if recent:
+            last_trace_payload = _trace_payload_from_result(
+                recent[-1][1] if isinstance(recent[-1][1], WitGymResponse) else WitGymResponse.model_validate(recent[-1][1])
+            )
+            trace_attr = _esc(json.dumps(last_trace_payload, ensure_ascii=True))
+        else:
+            trace_attr = ""
         body = "".join(
             format_trace_html(
                 r if isinstance(r, WitGymResponse) else WitGymResponse.model_validate(r),
@@ -622,7 +626,6 @@ def format_transcript_html(
             )
             for i, (user_input, r) in enumerate(recent)
         ) + append_html
-        trace_attr = _esc(json.dumps(last_trace_payload, ensure_ascii=True))
         return f'<div class="wg-transcript" data-latest-trace="{trace_attr}">{body}</div>{_PAGE_JS}'
 
     return f'<div class="wg-transcript" data-latest-trace="">{body}</div>{_PAGE_JS}'
